@@ -37,33 +37,45 @@ Thanks for contributing to **nestjs-starter**! This guide covers setup, branchin
 
 - **Main branch:** `main`
 - **Feature work:** create a short-lived branch from `main`.
-- **Naming:** use a clear prefix and summary, e.g.:
-  - `feature/user-profile`
-  - `fix/login-refresh`
-  - `chore/update-deps`
+- **Naming convention:** `type/short-description` in lowercase kebab-case.
+  - Optional issue id: `type/123-short-description`
+  - **Allowed types:** `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `build`, `ci`, `perf`, `style`
+- **Examples:**
+  - `feat/user-profile`
+  - `fix/245-login-refresh`
   - `docs/contributing-guide`
+  - `chore/update-deps`
 - Keep branches focused. If a change touches unrelated concerns, split it.
 - Rebase or merge `main` regularly to reduce conflicts.
 
 ## Commits
 
-Use **Conventional Commits**:
+Use **Conventional Commits** (https://www.conventionalcommits.org):
 
 ```
-type(scope): short summary
+type(scope)!: short summary
 ```
+
+- `scope` and `!` are optional.
+- Use `!` or a `BREAKING CHANGE:` footer for breaking changes.
+
+**Allowed types:** `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`
 
 Examples:
 
 - `feat(auth): add refresh token rotation`
 - `fix(users): handle missing profile image`
 - `docs(readme): clarify setup`
+- `refactor(users)!: drop legacy profile fields`
 
 Guidelines:
 
 - Use the **imperative** mood (“add”, not “added”).
-- Keep the subject line ≤ 72 characters.
-- Scope is optional but encouraged for clarity.
+- Keep the subject line ≤ 72 characters and do not end with a period.
+- Scope is optional but encouraged for clarity (module or domain).
+- Use footers to reference issues:
+  - `Refs: #123`
+  - `Closes #456`
 
 ## Code style
 
