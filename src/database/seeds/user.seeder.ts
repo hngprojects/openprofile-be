@@ -11,7 +11,7 @@ export const userSeeder: Seeder = {
     const adminEmail = 'admin@example.com';
     const existing = await repository.findOne({ where: { email: adminEmail } });
     if (existing) {
-      // eslint-disable-next-line no-console
+       
       console.log(`[UserSeeder] ${adminEmail} already exists — skipping`);
       return;
     }
@@ -23,7 +23,7 @@ export const userSeeder: Seeder = {
       role: UserRole.ADMIN,
     });
     await repository.save(admin);
-    // eslint-disable-next-line no-console
+     
     console.log(`[UserSeeder] created admin user → ${adminEmail} / Admin@123456`);
   },
 };
