@@ -25,8 +25,25 @@ export class WaitListModelAction {
     return this.waitListRepository.findOne({ where: { email } });
   }
 
-  async getAll(): Promise<WaitList[]> {
-    return this.waitListRepository.find({ order: { createdAt: 'DESC' } });
+  async getAll(page: number = 1, limit: number = 10): Promise<{
+    data: WaitList[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const [data, total] = await this.waitListRepository.findAndCount({
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async markEmailSent(id: string): Promise<WaitList> {
