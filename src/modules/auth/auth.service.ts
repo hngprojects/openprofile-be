@@ -79,12 +79,8 @@ export class AuthService {
     const tokens = await this.signTokens(user);
     await this.persistRefreshToken(user.id, tokens.refreshToken);
 
-    const {
-      password: _password,
-      refreshTokenHash: _hash,
-      deletedAt: _deletedAt,
-      ...safeUser
-    } = user;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password, refreshTokenHash, deletedAt, ...safeUser } = user;
 
     return { ...tokens, user: safeUser };
   }
