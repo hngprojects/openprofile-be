@@ -23,7 +23,7 @@ export const userSeeder: Seeder = {
     });
     await repository.save(admin);
     console.log(
-      `[UserSeeder] created admin user → ${adminEmail} / Admin@123456`,
+      `[UserSeeder] created admin user → ${adminEmail} (password set)`,
     );
   },
 };
