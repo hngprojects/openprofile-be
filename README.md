@@ -15,14 +15,14 @@ A production-ready NestJS 11 starter with PostgreSQL, JWT auth, the repository p
 ## Prerequisites
 
 - Node.js 20+
-- pnpm (or npm/yarn — adjust commands accordingly)
+- npm (or pnpm/yarn — adjust commands accordingly)
 - A running PostgreSQL 14+ instance
 
 ## Quick start
 
 ```bash
 # 1. Install
-pnpm install
+npm install
 
 # 2. Configure
 cp .env.example .env
@@ -32,14 +32,14 @@ cp .env.example .env
 createdb nestjs_starter   # or your preferred client
 
 # 4. Apply migrations
-pnpm migration:run
+npm run migration:run
 
 # 5. (optional) Seed an admin user
-pnpm seed
+npm run seed
 # creates admin@example.com / Admin@123456
 
 # 6. Run
-pnpm start:dev
+npm run start:dev
 ```
 
 Open `http://localhost:3000/docs` for the Swagger UI.
@@ -49,27 +49,27 @@ Open `http://localhost:3000/docs` for the Swagger UI.
 ### App
 | Script | Purpose |
 |---|---|
-| `pnpm start:dev` | Run with watch mode |
-| `pnpm start:debug` | Run with `--inspect` debugger |
-| `pnpm start:prod` | Run the compiled `dist/main.js` |
-| `pnpm build` | Compile to `dist/` |
-| `pnpm lint` | Lint and auto-fix |
-| `pnpm format` | Prettier |
-| `pnpm test` | Unit tests |
-| `pnpm test:e2e` | End-to-end tests |
-| `pnpm test:cov` | Coverage report |
+| `npm run start:dev` | Run with watch mode |
+| `npm run start:debug` | Run with `--inspect` debugger |
+| `npm run start:prod` | Run the compiled `dist/main.js` |
+| `npm run build` | Compile to `dist/` |
+| `npm run lint` | Lint and auto-fix |
+| `npm run format` | Prettier |
+| `npm run test` | Unit tests |
+| `npm run test:e2e` | End-to-end tests |
+| `npm run test:cov` | Coverage report |
 
 ### Database
 | Script | Purpose |
 |---|---|
-| `pnpm migration:run` | Apply all pending migrations |
-| `pnpm migration:revert` | Revert the most recent migration |
-| `pnpm migration:show` | List migrations and their status |
-| `pnpm migration:generate src/database/migrations/<Name>` | Diff entities vs DB and generate a migration |
-| `pnpm migration:create src/database/migrations/<Name>` | Create an empty migration |
-| `pnpm schema:drop` | Drop all tables (destructive — dev only) |
-| `pnpm seed` | Run all seeders |
-| `pnpm db:reset` | Drop schema, run migrations, run seeders |
+| `npm run migration:run` | Apply all pending migrations |
+| `npm run migration:revert` | Revert the most recent migration |
+| `npm run migration:show` | List migrations and their status |
+| `npm run migration:generate src/database/migrations/<Name>` | Diff entities vs DB and generate a migration |
+| `npm run migration:create src/database/migrations/<Name>` | Create an empty migration |
+| `npm run schema:drop` | Drop all tables (destructive — dev only) |
+| `npm run seed` | Run all seeders |
+| `npm run db:reset` | Drop schema, run migrations, run seeders |
 
 > The `migration:generate` script requires a live database connection so TypeORM can diff against the current schema.
 
@@ -137,8 +137,8 @@ export class UsersService {
 4. Implement service and controller
 5. Wire up the module: `imports: [TypeOrmModule.forFeature([Entity])]`, providers include the model action
 6. Register the module in `AppModule.imports`
-7. Generate a migration: `pnpm migration:generate src/database/migrations/Add<Name>`
-8. Apply it: `pnpm migration:run`
+7. Generate a migration: `npm run migration:generate src/database/migrations/Add<Name>`
+8. Apply it: `npm run migration:run`
 
 ### Env validation
 
