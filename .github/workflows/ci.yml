@@ -11,8 +11,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-        JWT_ACCESS_SECRET: 0974ff0343112a9fef4b5456b964a1f578c7b875bca93a4e98dfb4ade6771363
-        JWT_REFRESH_SECRET: 22d052cc1bd811224baa665baabf7addf894e6d351f1b1668f0ef544fba3904c
+        JWT_ACCESS_SECRET: ci-only-not-a-real-secret-access-key-min-32-chars
+        JWT_REFRESH_SECRET: ci-only-not-a-real-secret-refresh-key-min-32-chars
 
     steps:
       - name: Checkout code
@@ -60,10 +60,8 @@ jobs:
         DATABASE_USER: test_user
         DATABASE_PASSWORD: test_password
         DATABASE_NAME: test_db
-        JWT_ACCESS_SECRET: 0974ff0343112a9fef4b5456b964a1f578c7b875bca93a4e98dfb4ade6771363
-        JWT_REFRESH_SECRET: 22d052cc1bd811224baa665baabf7addf894e6d351f1b1668f0ef544fba3904c
-
-    steps:
+        JWT_ACCESS_SECRET: ci-only-not-a-real-secret-access-key-min-32-chars
+        JWT_REFRESH_SECRET: ci-only-not-a-real-secret-refresh-key-min-32-chars
       - name: Checkout code
         uses: actions/checkout@v4
 
