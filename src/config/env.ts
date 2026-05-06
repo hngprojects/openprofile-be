@@ -29,7 +29,9 @@ export const env = createEnv({
       .default(false)
       .transform((v) => v === true || v === 'true'),
 
-    JWT_ACCESS_SECRET: z.string().min(32, 'JWT_ACCESS_SECRET must be at least 32 chars'),
+    JWT_ACCESS_SECRET: z
+      .string()
+      .min(32, 'JWT_ACCESS_SECRET must be at least 32 chars'),
     JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
     JWT_REFRESH_SECRET: z
       .string()

@@ -22,6 +22,8 @@ export const userSeeder: Seeder = {
       role: UserRole.ADMIN,
     });
     await repository.save(admin);
-    console.log(`[UserSeeder] created admin user → ${adminEmail} / Admin@123456`);
+    console.log(
+      `[UserSeeder] created admin user → ${adminEmail} / Admin@123456`,
+    );
   },
 };
