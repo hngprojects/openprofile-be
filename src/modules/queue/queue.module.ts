@@ -1,12 +1,13 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { redisConfig } from '../../config/redis.config';
-import { UsersService } from '../users/users.service';
+import { UsersModule } from '../users/users.module';
 import { EmailService } from '../../common/service/email.service';
+import { redisConfig } from '../../config/redis.config';
 
 @Module({
   imports: [
+    UsersModule,
     BullModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: () => {
@@ -26,6 +27,6 @@ import { EmailService } from '../../common/service/email.service';
       name: 'user-welcome',
     }),
   ],
-  providers: [UsersService, EmailService],
+  providers: [EmailService],
 })
 export class QueueModule {}
