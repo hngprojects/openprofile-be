@@ -30,9 +30,9 @@ jobs:
         DATABASE_USER: test_user
         DATABASE_PASSWORD: test_password
         DATABASE_NAME: test_db
-        JWT_ACCESS_SECRET: test_access_secret
-        JWT_REFRESH_SECRET: test_refresh_secret
-        
+        JWT_ACCESS_SECRET: 0974ff0343112a9fef4b5456b964a1f578c7b875bca93a4e98dfb4ade6771363
+        JWT_REFRESH_SECRET: 22d052cc1bd811224baa665baabf7addf894e6d351f1b1668f0ef544fba3904c
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
