@@ -24,7 +24,7 @@ async function bootstrap() {
 
   if (env.SWAGGER_ENABLED) {
     const config = new DocumentBuilder()
-      .setTitle('NestJS Starter')
+      .setTitle('OpenProfile BE')
       .setDescription('REST API documentation')
       .setVersion('1.0.0')
       .addBearerAuth(
