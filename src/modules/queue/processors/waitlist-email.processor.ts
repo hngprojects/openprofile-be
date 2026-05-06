@@ -17,15 +17,15 @@ export class WaitlistEmailProcessor extends WorkerHost {
 
   async process(
     job: Job,
-  ): Promise<{ success: boolean; waitlistId: string; email: string }> {
+  ): Promise<{ success: boolean; waitListId: string; email: string }> {
     try {
-      const { waitlistId } = job.data as { waitlistId: string };
-      this.logger.log(`Processing waitlist email for entry ${waitlistId}`);
+      const { waitListId } = job.data as { waitListId: string };
+      this.logger.log(`Processing waitlist email for entry ${waitListId}`);
 
       const waitlistEntry =
-        await this.waitlistModelAction.findByEmail(waitlistId);
+        await this.waitlistModelAction.findByEmail(waitListId);
       if (!waitlistEntry) {
-        throw new Error(`Waitlist entry ${waitlistId} not found`);
+        throw new Error(`Waitlist entry ${waitListId} not found`);
       }
 
       const result = await this.emailService.sendWaitlistEmail(
@@ -38,8 +38,8 @@ export class WaitlistEmailProcessor extends WorkerHost {
       this.logger.log(`[EMAIL] Waitlist email sent to: ${waitlistEntry.email}`);
       await this.waitlistModelAction.markEmailSent(waitlistEntry.id);
 
-      this.logger.log(`Waitlist email marked as sent for entry ${waitlistId}`);
-      return { success: true, waitlistId, email: waitlistEntry.email };
+      this.logger.log(`Waitlist email marked as sent for entry ${waitListId}`);
+      return { success: true, waitListId, email: waitlistEntry.email };
     } catch (err: unknown) {
       const error = err instanceof Error ? err : new Error(String(err));
       this.logger.error(

@@ -22,7 +22,7 @@ export class WaitListService {
     return waitListEntry;
   }
 
-  async getAllWaitList() {
-    return this.waitListModelAction.getAll();
+  async getAllWaitList(page: number = 1, limit: number = 100) {
+    return this.waitListModelAction.getAll(page, limit);
   }
 }
