@@ -12,26 +12,35 @@ Thanks for contributing to **openprofile-be**! This guide covers setup, branchin
 
 1. Fork the repo and clone your fork.
 2. Install dependencies:
-   ```bash
-   npm install
-   ```
+
+    ```bash
+    npm install
+    ```
+
 3. Create your environment file:
-   ```bash
-   cp .env.example .env
-   ```
+
+    ```bash
+    cp .env.example .env
+    ```
+
 4. Create the database and run migrations:
-   ```bash
-   createdb nestjs_starter
-     npm run migration:run
-   ```
+
+    ```bash
+    createdb nestjs_starter
+    npm run migration:run
+    ```
+
 5. (Optional) Seed data:
-   ```bash
-   npm run seed
-   ```
+
+    ```bash
+    npm run seed
+    ```
+
 6. Run the app:
-   ```bash
-   npm run start:dev
-   ```
+
+    ```bash
+    npm run start:dev
+    ```
 
 ## Branching
 
@@ -80,10 +89,12 @@ Guidelines:
 ## Code style
 
 - Run formatting and linting before pushing:
-  ```bash
-   npm run format
-   npm run lint
-  ```
+
+    ```bash
+    npm run format
+    npm run lint
+    ```
+
 - Follow existing patterns in `src/common` and `src/modules`.
 - Prefer small, composable services and keep controllers thin.
 
@@ -105,13 +116,16 @@ If you add or change behavior, include or update tests.
 - For schema changes:
   1. Update entities.
   2. Generate a migration:
-     ```bash
-     npm run migration:generate src/database/migrations/<Name>
-     ```
+
+      ```bash
+      npm run migration:generate src/database/migrations/<Name>
+      ```
+
   3. Apply it:
-     ```bash
-   npm run migration:run
-     ```
+
+      ```bash
+      npm run migration:run
+      ```
 
 ## Pull requests
 
