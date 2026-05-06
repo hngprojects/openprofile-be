@@ -12,7 +12,9 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
 
 const BCRYPT_ROUNDS = 10;
-const NO_TRANSACTION = { transactionOptions: { useTransaction: false as const } };
+const NO_TRANSACTION = {
+  transactionOptions: { useTransaction: false as const },
+};
 
 @Injectable()
 export class UsersService {
