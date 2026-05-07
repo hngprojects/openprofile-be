@@ -44,12 +44,12 @@ export const env = createEnv({
       .default(true)
       .transform((v) => v === true || v === 'true'),
 
-    MAIL_HOST: z.string().min(1),
+    MAIL_HOST: z.string().min(1).optional(),
     MAIL_PORT: z.coerce.number().int().positive().default(587),
-    MAIL_USER: z.string().min(1),
-    MAIL_PASS: z.string().min(1),
-    MAIL_FROM: z.string().min(1),
-    APP_URL: z.string().url(),
+    MAIL_USER: z.string().min(1).optional(),
+    MAIL_PASS: z.string().min(1).optional(),
+    MAIL_FROM: z.string().min(1).optional(),
+    APP_URL: z.string().url().optional(),
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,
