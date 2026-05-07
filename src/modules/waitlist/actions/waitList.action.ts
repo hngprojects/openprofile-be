@@ -11,18 +11,24 @@ export class WaitListModelAction {
   ) {}
 
   async create(email: string): Promise<WaitList> {
+    const normalizedEmail = email.toLowerCase();
     const existing = await this.waitListRepository.findOne({
-      where: { email },
+      where: { email: normalizedEmail },
     });
     if (existing) {
       throw new Error('Email already in waitList');
     }
-    const waitListEntry = this.waitListRepository.create({ email });
+    const waitListEntry = this.waitListRepository.create({
+      email: normalizedEmail,
+    });
     return this.waitListRepository.save(waitListEntry);
   }
 
   async findByEmail(email: string): Promise<WaitList | null> {
-    return this.waitListRepository.findOne({ where: { email } });
+    const normalizedEmail = email.toLowerCase();
+    return this.waitListRepository.findOne({
+      where: { email: normalizedEmail },
+    });
   }
 
   async getAll(

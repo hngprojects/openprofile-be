@@ -7,6 +7,7 @@ import {
   HttpCode,
   Get,
   Query,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { CreateWaitlistDto } from './dto/create-waitlist.dto';
 import { WaitListService } from './waitList.service';
@@ -21,7 +22,6 @@ export class WaitlistController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Add email to wait list' })
-
   async addToWaitlist(@Body() dto: CreateWaitlistDto) {
     try {
       const result = await this.waitListService.addToWaitlist(dto.email);
@@ -34,7 +34,7 @@ export class WaitlistController {
       const message =
         error instanceof Error ? error.message : 'Failed to add to waitlist';
 
-      throw new HttpException({ message }, HttpStatus.BAD_REQUEST);
+      throw new HttpException({ message }, HttpStatus.CONFLICT);
     }
   }
 
@@ -42,8 +42,16 @@ export class WaitlistController {
   @Public()
   @ApiOperation({ summary: 'Get all waitlist entries with pagination' })
   async getAllWaitList(
-    @Query('page') page: number = 1,
-    @Query('limit') limit: number = 100,
+    @Query(
+      'page',
+      new ParseIntPipe({ errorHttpStatusCode: HttpStatus.BAD_REQUEST }),
+    )
+    page: number = 1,
+    @Query(
+      'limit',
+      new ParseIntPipe({ errorHttpStatusCode: HttpStatus.BAD_REQUEST }),
+    )
+    limit: number = 100,
   ) {
     try {
       const result = await this.waitListService.getAllWaitList(page, limit);

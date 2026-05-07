@@ -1,4 +1,4 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { BeforeInsert, Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('waitList')
 export class WaitList {
@@ -13,4 +13,9 @@ export class WaitList {
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
+
+  @BeforeInsert()
+  normalizeEmail() {
+    this.email = this.email.toLowerCase();
+  }
 }
