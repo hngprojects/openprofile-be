@@ -1,7 +1,7 @@
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Injectable } from '@nestjs/common';
-import { WaitList } from '../entities/waitList.entity';
+import { WaitList } from '../entities/waitList.entity.js';
 
 @Injectable()
 export class WaitListModelAction {
@@ -25,7 +25,10 @@ export class WaitListModelAction {
     return this.waitListRepository.findOne({ where: { email } });
   }
 
-  async getAll(page: number = 1, limit: number = 10): Promise<{
+  async getAll(
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<{
     data: WaitList[];
     total: number;
     page: number;
