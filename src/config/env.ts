@@ -49,6 +49,10 @@ export const env = createEnv({
       .union([z.boolean(), z.enum(['true', 'false'])])
       .default(true)
       .transform((v) => v === true || v === 'true'),
+    REDIS_HOST: z.string().min(1).default('localhost'),
+    REDIS_PORT: z.string().min(1).default('6379'),
+    REDIS_PASSWORD: z.string().default(''),
+    REDIS_DB: z.string().min(1).default('0'),
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,

@@ -16,10 +16,8 @@ export class WaitListService {
     const waitListEntry = await this.waitListModelAction.create(email);
 
     await this.waitListEmailQueue.add('send-waitlist-email', {
-      waitListId: waitListEntry.email,
       email: waitListEntry.email,
     });
-
     return waitListEntry;
   }
 

@@ -3,10 +3,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
 import { WaitlistEmailProcessor } from '../queue/processors/waitlist-email.processor';
 import { WaitlistController } from './waitlist.controller';
-import { EmailService } from '../../common/service/email.service';
 import { WaitListModelAction } from './actions/waitList.action';
 import { WaitListService } from './waitList.service';
 import { WaitList } from './entities/waitList.entity';
+import { EmailModule } from '../../common/email/email.module';
 
 @Module({
   imports: [
@@ -14,14 +14,10 @@ import { WaitList } from './entities/waitList.entity';
     BullModule.registerQueue({
       name: 'waitlist-email',
     }),
+    EmailModule,
   ],
   controllers: [WaitlistController],
-  providers: [
-    WaitListModelAction,
-    WaitlistEmailProcessor,
-    WaitListService,
-    EmailService,
-  ],
+  providers: [WaitListModelAction, WaitlistEmailProcessor, WaitListService],
   exports: [WaitListService, WaitListModelAction],
 })
 export class WaitlistModule {}
