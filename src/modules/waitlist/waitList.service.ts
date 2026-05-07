@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import { WaitListModelAction } from './actions/waitList.action';
-import { WaitList } from './entities/waitList.entity';
+
+import { WaitList } from './entities/waitList.entity.js';
+import { WaitListModelAction } from './actions/waitList.action.js';
 
 @Injectable()
 export class WaitListService {

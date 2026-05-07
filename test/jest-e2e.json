@@ -1,12 +1,24 @@
 {
   "moduleFileExtensions": ["js", "json", "ts"],
-  "rootDir": ".",
+  "rootDir": "..",
   "testEnvironment": "node",
   "testRegex": "test/.*\\.e2e-spec\\.ts$",
   "transform": {
-    "^.+\\.(t|j)s$": "ts-jest"
+    "^.+\\.(t|j)s$": [
+      "ts-jest",
+      {
+        "useESM": true,
+        "diagnostics": false,
+        "tsconfig": "<rootDir>/test/tsconfig.e2e.json"
+      }
+    ]
   },
   "transformIgnorePatterns": [
-    "node_modules/(?!@t3-oss/env-core/)"
-  ]
+    "node_modules/(?!(@t3-oss/env-core|@t3-oss/env-nextjs|zod)/)"
+  ],
+  "moduleNameMapper": {
+    "^(\\.{1,2}/.*)\\.js$": "$1"
+  },
+  "extensionsToTreatAsEsm": [".ts"],
+  "testTimeout": 30000
 }
