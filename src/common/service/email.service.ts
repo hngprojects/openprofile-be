@@ -17,12 +17,12 @@ export class EmailService {
   constructor() {
     this.transporter = createTransport<SMTPTransport.SentMessageInfo>(
       new SMTPTransport({
-        host: env.SMTP_HOST,
-        port: env.SMTP_PORT,
+        host: env.SMTP_HOST as string,
+        port: env.SMTP_PORT as number,
         secure: env.SMTP_PORT === 465,
         auth: {
-          user: env.SMTP_USER,
-          pass: env.SMTP_PASSWORD,
+          user: env.SMTP_USER as string,
+          pass: env.SMTP_PASSWORD as string,
         },
       }),
     );
