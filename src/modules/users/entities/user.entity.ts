@@ -47,14 +47,6 @@ export class User {
   })
   refreshTokenHash: string | null;
 
-  @Exclude()
-  @Column({ type: 'varchar', length: 64, nullable: true, name: 'password_reset_token_hash' })
-  passwordResetTokenHash: string | null;
-
-  @Exclude()
-  @Column({ type: 'timestamp with time zone', nullable: true, name: 'password_reset_expires' })
-  passwordResetExpires: Date | null;
-
   @ApiProperty()
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

@@ -13,6 +13,8 @@ import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { HealthModule } from './modules/health/health.module';
 import { UsersModule } from './modules/users/users.module';
+import { QueueModule } from './modules/queue/queue.module';
+import { MailModule } from './modules/mail/mail.module';
 
 @Module({
   imports: [
@@ -26,6 +28,8 @@ import { UsersModule } from './modules/users/users.module';
     HealthModule,
     UsersModule,
     AuthModule,
+    QueueModule,
+    MailModule,
   ],
   providers: [
     {

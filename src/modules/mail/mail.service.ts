@@ -1,39 +1,37 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Inject } from '@nestjs/common';
+import type { ConfigType } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
-import { env } from '../../config/env';
+import { mailConfig } from './config/mail.config';
 
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
   private readonly transporter: nodemailer.Transporter;
 
-  constructor() {
+  constructor(
+    @Inject(mailConfig.KEY)
+    private readonly mail: ConfigType<typeof mailConfig>,
+  ) {
     this.transporter = nodemailer.createTransport({
-      host: env.MAIL_HOST,
-      port: env.MAIL_PORT,
-      secure: env.MAIL_PORT === 465,
+      host: this.mail.host,
+      port: this.mail.port,
+      secure: this.mail.secure,
       auth: {
-        user: env.MAIL_USER,
-        pass: env.MAIL_PASS,
+        user: this.mail.user,
+        pass: this.mail.pass,
       },
     });
   }
 
-  async sendPasswordResetEmail(to: string, token: string): Promise<void> {
-    const resetUrl = `${env.APP_URL?.replace(/\/$/, '')}/reset-password?token=${token}`;
-
+  async sendEmail(to: string, subject: string, html: string): Promise<void> {
     await this.transporter.sendMail({
-      from: env.MAIL_FROM,
+      from: this.mail.from,
       to,
-      subject: 'Password Reset Request',
-      html: `
-        <p>You requested a password reset.</p>
-        <p>Click the link below to reset your password. This link expires in <strong>1 hour</strong>.</p>
-        <p><a href="${resetUrl}">${resetUrl}</a></p>
-        <p>If you did not request this, you can safely ignore this email.</p>
-      `,
+      subject,
+      html,
     });
 
-    this.logger.log(`Password reset email sent to ${to}`);
+    this.logger.log(`Email sent to ${to} with subject "${subject}"`);
   }
 }
