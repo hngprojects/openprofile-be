@@ -50,6 +50,7 @@ export const env = createEnv({
     MAIL_PASS: z.string().min(1).optional(),
     MAIL_FROM: z.string().min(1).optional(),
     APP_URL: z.string().url().optional(),
+    REDIS_URL: z.string().min(1).optional(),
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,
