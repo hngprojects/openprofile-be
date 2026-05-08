@@ -51,15 +51,21 @@ export class EmailService {
 
   private getWaitlistEmailHtml(): string {
     return `
-      <html>
-        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-          <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h1 style="color: #2563eb;">Welcome to the OpenProfile Waitlist!</h1>
-            <p>You've been added to our waitlist. We'll notify you as soon as we launch!</p>
-            <p>Thank you for your interest,<br>The OpenProfile Team</p>
-          </div>
-        </body>
-      </html>
+     <html>
+  <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+      <h1 style="color: #2563eb;">Welcome to the OpenProfile Waitlist!</h1>
+      <p>You've been added to our waitlist. We'll notify you as soon as we launch!</p>
+      <p>Thank you for your interest,<br>The OpenProfile Team</p>
+
+      <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+      <p style="font-size: 12px; color: #888; text-align: center;">
+        Don't want to hear from us?
+        <a href="${env.APP_URL}/api/unsubscribe" style="color: #888;">Unsubscribe</a>
+      </p>
+    </div>
+  </body>
+</html>
     `;
   }
 }
