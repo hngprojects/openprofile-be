@@ -20,7 +20,7 @@ export class MailService {
   }
 
   async sendPasswordResetEmail(to: string, token: string): Promise<void> {
-    const resetUrl = `${env.APP_URL}/reset-password?token=${token}`;
+    const resetUrl = `${env.APP_URL?.replace(/\/$/, '')}/reset-password?token=${token}`;
 
     await this.transporter.sendMail({
       from: env.MAIL_FROM,
