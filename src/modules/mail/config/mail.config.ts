@@ -1,16 +1,14 @@
 import { registerAs } from '@nestjs/config';
 import { z } from 'zod';
+import { env } from '../../../config/env';
 
 const mailSchema = z.object({
   host: z.string().min(1),
-  port: z.coerce.number().int().positive().default(587),
+  port: z.number().int().positive(),
   user: z.string().min(1),
   pass: z.string().min(1),
   from: z.string().min(1),
-  secure: z
-    .union([z.boolean(), z.enum(['true', 'false'])])
-    .default(false)
-    .transform((value) => value === true || value === 'true'),
+  secure: z.boolean(),
   appUrl: z.string().url(),
 });
 
@@ -18,12 +16,12 @@ export type MailConfig = z.infer<typeof mailSchema>;
 
 export const mailConfig = registerAs('mail', (): MailConfig => {
   return mailSchema.parse({
-    host: process.env.MAIL_HOST,
-    port: process.env.MAIL_PORT,
-    user: process.env.MAIL_USER,
-    pass: process.env.MAIL_PASS,
-    from: process.env.MAIL_FROM,
-    secure: process.env.MAIL_SECURE,
-    appUrl: process.env.APP_URL,
+    host: env.MAIL_HOST,
+    port: env.MAIL_PORT,
+    user: env.MAIL_USER,
+    pass: env.MAIL_PASS,
+    from: env.MAIL_FROM,
+    secure: env.MAIL_SECURE ?? false,
+    appUrl: env.APP_URL,
   });
 });

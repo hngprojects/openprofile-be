@@ -109,7 +109,7 @@ export class UsersService {
         id: uuidv7(),
         userId: id,
         tokenHash,
-        expires_at: expires,
+        expiresAt: expires,
         used: false,
       },
     });

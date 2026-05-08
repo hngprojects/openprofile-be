@@ -18,7 +18,7 @@ export class ResetPasswordModelAction extends AbstractModelAction<ResetPassword>
       .createQueryBuilder('rp')
       .where('rp.tokenHash = :tokenHash', { tokenHash })
       .andWhere('rp.used = :used', { used: false })
-      .andWhere('rp.expires_at > CURRENT_TIMESTAMP')
+      .andWhere('rp.expiresAt > CURRENT_TIMESTAMP')
       .getOne();
   }
 
@@ -27,8 +27,8 @@ export class ResetPasswordModelAction extends AbstractModelAction<ResetPassword>
       .createQueryBuilder('rp')
       .where('rp.userId = :userId', { userId })
       .andWhere('rp.used = :used', { used: false })
-      .andWhere('rp.expires_at > CURRENT_TIMESTAMP')
-      .orderBy('rp.created_at', 'DESC')
+      .andWhere('rp.expiresAt > CURRENT_TIMESTAMP')
+      .orderBy('rp.createdAt', 'DESC')
       .getOne();
   }
 

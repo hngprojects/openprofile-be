@@ -93,27 +93,31 @@ export class AuthService {
     dto: ForgotPasswordDto,
   ): Promise<Record<string, string> | undefined> {
     const user = await this.usersService.findByEmail(dto.email);
-    if (!user) return; // don't reveal whether the email exists
+    if (user) {
+      const rawToken = crypto.randomBytes(32).toString('hex');
+      const tokenHash = crypto
+        .createHash('sha256')
+        .update(rawToken)
+        .digest('hex');
+      const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-    const rawToken = crypto.randomBytes(32).toString('hex');
-    const tokenHash = crypto
-      .createHash('sha256')
-      .update(rawToken)
-      .digest('hex');
-    const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+      await this.usersService.setPasswordResetToken(
+        user.id,
+        tokenHash,
+        expires,
+      );
 
-    await this.usersService.setPasswordResetToken(user.id, tokenHash, expires);
+      const payload: ResetPasswordEmailData = {
+        to: user.email,
+        resetLink: env.APP_URL + '/reset-password?token=' + rawToken,
+      };
 
-    const payload: ResetPasswordEmailData = {
-      to: user.email,
-      resetLink: `${env.APP_URL}/reset-password?token=${rawToken}`,
-    };
-
-    await this.queueService.addJob<ResetPasswordEmailData>(
-      QUEUE_NAMES.EMAIL,
-      QUEUE_JOB_NAMES.EMAIL.SEND_PASSWORD_RESET,
-      payload,
-    );
+      await this.queueService.addJob<ResetPasswordEmailData>(
+        QUEUE_NAMES.EMAIL,
+        QUEUE_JOB_NAMES.EMAIL.SEND_PASSWORD_RESET,
+        payload,
+      );
+    }
 
     return {
       message: 'A password reset link has been sent to the provided email',

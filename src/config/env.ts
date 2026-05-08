@@ -49,6 +49,11 @@ export const env = createEnv({
     MAIL_USER: z.string().min(1).optional(),
     MAIL_PASS: z.string().min(1).optional(),
     MAIL_FROM: z.string().min(1).optional(),
+    MAIL_SECURE: z
+      .union([z.boolean(), z.enum(['true', 'false'])])
+      .default(false)
+      .transform((v) => v === true || v === 'true')
+      .optional(),
     APP_URL: z.string().url().optional(),
     REDIS_URL: z.string().min(1).optional(),
   },
