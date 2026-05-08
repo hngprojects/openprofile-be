@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
@@ -12,6 +16,12 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtPayload } from './strategies/jwt.strategy';
+import { QueueService } from '../queue/queue.service';
+import {
+  QUEUE_JOB_NAMES,
+  QUEUE_NAMES,
+} from '../queue/config/queue-names.constant';
+import { ResetPasswordEmailData } from '../mail/interfaces/reset-password-email.interface';
 
 export interface AuthTokens {
   accessToken: string;
@@ -19,7 +29,14 @@ export interface AuthTokens {
 }
 
 export interface AuthResponse extends AuthTokens {
-  user: Omit<User, 'password' | 'refreshTokenHash' | 'deletedAt' | 'passwordResetTokenHash' | 'passwordResetExpires'>;
+  user: Omit<
+    User,
+    | 'password'
+    | 'refreshTokenHash'
+    | 'deletedAt'
+    | 'passwordResetTokenHash'
+    | 'passwordResetExpires'
+  >;
 }
 
 @Injectable()
@@ -27,7 +44,7 @@ export class AuthService {
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
-    private readonly mailService: MailService,
+    private readonly queueService: QueueService,
   ) {}
 
   async register(dto: RegisterDto): Promise<AuthResponse> {
@@ -85,15 +102,34 @@ export class AuthService {
     if (!user) return; // don't reveal whether the email exists
 
     const rawToken = crypto.randomBytes(32).toString('hex');
-    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const tokenHash = crypto
+      .createHash('sha256')
+      .update(rawToken)
+      .digest('hex');
     const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
     await this.usersService.setPasswordResetToken(user.id, tokenHash, expires);
-    await this.mailService.sendPasswordResetEmail(user.email, rawToken);
+
+    const payload: ResetPasswordEmailData = {
+      to: user.email,
+      resetLink: `${env.APP_URL}/reset-password?token=${rawToken}`,
+    };
+
+    await this.queueService.addJob<ResetPasswordEmailData>(
+      QUEUE_NAMES.EMAIL,
+      QUEUE_JOB_NAMES.EMAIL.SEND_PASSWORD_RESET,
+      payload,
+      {
+        jobId: `user-${user.id}`,
+      },
+    );
   }
 
   async resetPassword(dto: ResetPasswordDto): Promise<void> {
-    const tokenHash = crypto.createHash('sha256').update(dto.token).digest('hex');
+    const tokenHash = crypto
+      .createHash('sha256')
+      .update(dto.token)
+      .digest('hex');
     const user = await this.usersService.findByValidResetToken(tokenHash);
 
     if (!user) {
@@ -109,7 +145,14 @@ export class AuthService {
     await this.persistRefreshToken(user.id, tokens.refreshToken);
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password, refreshTokenHash, deletedAt, passwordResetTokenHash, passwordResetExpires, ...safeUser } = user;
+    const {
+      password,
+      refreshTokenHash,
+      deletedAt,
+      passwordResetTokenHash,
+      passwordResetExpires,
+      ...safeUser
+    } = user;
 
     return { ...tokens, user: safeUser };
   }
