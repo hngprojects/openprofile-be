@@ -8,7 +8,6 @@ import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import type { StringValue } from 'ms';
 import { env } from '../../config/env';
-import { MailService } from '../mail/mail.service';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';

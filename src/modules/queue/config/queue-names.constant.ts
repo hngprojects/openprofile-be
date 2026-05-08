@@ -1,5 +1,3 @@
-import { Verify } from 'node:crypto';
-
 export const QUEUE_NAMES = {
   EMAIL: 'email',
 } as const;
