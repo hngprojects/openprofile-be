@@ -12,11 +12,9 @@ import { ResetPasswordEmailData } from './interfaces/reset-password-email.interf
 @Processor(QUEUE_NAMES.EMAIL)
 export class MailProcessor extends WorkerHost {
   private readonly logger = new Logger(MailProcessor.name);
-  private readonly mailService: MailService;
 
-  constructor(mailService: MailService) {
+  constructor(private readonly mailService: MailService) {
     super();
-    this.mailService = mailService;
   }
 
   async process(job: Job<ResetPasswordEmailData>): Promise<void> {

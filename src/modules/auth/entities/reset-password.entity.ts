@@ -9,11 +9,11 @@ export class ResetPassword {
   id!: string;
 
   @ApiProperty({ format: 'uuid' })
-  @Column()
+  @Column({ name: 'userId' })
   userId!: string;
 
   @ApiProperty({ description: 'SHA256 hash of the reset token', maxLength: 64 })
-  @Column({ type: 'varchar', length: 64 })
+  @Column({ type: 'varchar', length: 64, name: 'tokenHash' })
   tokenHash!: string;
 
   @ApiProperty({ default: false })
@@ -21,15 +21,16 @@ export class ResetPassword {
   used!: boolean;
 
   @ApiProperty({ type: 'string', format: 'date-time' })
-  @Column({ type: 'timestamp with time zone' })
-  expires_at: Date;
+  @Column({ type: 'timestamp with time zone', name: 'expires_at' })
+  expiresAt: Date;
 
   @ApiProperty({ type: 'string', format: 'date-time' })
   @Column({
     type: 'timestamp with time zone',
     default: () => 'CURRENT_TIMESTAMP',
+    name: 'created_at',
   })
-  created_at: Date;
+  createdAt: Date;
 
   @BeforeInsert()
   generateId() {
