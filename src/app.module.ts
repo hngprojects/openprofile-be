@@ -7,13 +7,11 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { appConfig } from './config/app.config';
 import { databaseConfig } from './config/database.config';
-import { redisConfig } from './config/redis.config';
 import './config/env';
 import { jwtConfig } from './config/jwt.config';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { HealthModule } from './modules/health/health.module';
-import { QueueModule } from './modules/queue/queue.module';
 import { WaitlistModule } from './modules/waitlist/waitlist.module';
 
 import { UsersModule } from './modules/users/users.module';
@@ -24,10 +22,10 @@ import { MailModule } from './modules/mail/mail.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, databaseConfig, jwtConfig, redisConfig],
+      load: [appConfig, databaseConfig, jwtConfig],
     }),
     TypeOrmModule.forRootAsync({
-      useFactory: () :   TypeOrmModuleOptions => databaseConfig(),
+      useFactory: (): TypeOrmModuleOptions => databaseConfig(),
     }),
     QueueModule,
     WaitlistModule,

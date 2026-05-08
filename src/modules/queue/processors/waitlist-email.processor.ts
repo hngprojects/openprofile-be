@@ -3,8 +3,9 @@ import { Job } from 'bullmq';
 import { Logger } from '@nestjs/common';
 import { WaitListModelAction } from '../../waitlist/actions/waitList.action';
 import { EmailService } from '../../../common/email/email.service';
+import { QUEUE_JOB_NAMES } from '../config/queue-names.constant';
 
-@Processor('waitlist-email')
+@Processor(QUEUE_JOB_NAMES.EMAIL.WAITLIST)
 export class WaitlistEmailProcessor extends WorkerHost {
   private readonly logger = new Logger(WaitlistEmailProcessor.name);
 
