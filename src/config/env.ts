@@ -38,12 +38,6 @@ export const env = createEnv({
       .min(32, { message: 'JWT_REFRESH_SECRET must be at least 32 chars' }),
     JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
 
-    SMTP_HOST: z.string().min(1).default('smtp.gmail.com'),
-    SMTP_PORT: z.coerce.number().int().positive().default(587),
-    SMTP_USER: z.string().min(1).default(''),
-    SMTP_PASSWORD: z.string().default(''),
-    SMTP_FROM: z.string().email().default('user@example.com'),
-
     CORS_ORIGIN: z.string().default('*'),
     SWAGGER_ENABLED: z
       .union([z.boolean(), z.enum(['true', 'false'])])

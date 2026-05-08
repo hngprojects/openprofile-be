@@ -17,12 +17,12 @@ export class EmailService {
   constructor() {
     this.transporter = createTransport<SMTPTransport.SentMessageInfo>(
       new SMTPTransport({
-        host: env.SMTP_HOST || 'smtp.gmail.com',
-        port: env.SMTP_PORT,
-        secure: env.SMTP_PORT === 465,
+        host: env.MAIL_HOST || 'smtp.gmail.com',
+        port: env.MAIL_PORT,
+        secure: env.MAIL_PORT === 465,
         auth: {
-          user: env.SMTP_USER,
-          pass: env.SMTP_PASSWORD,
+          user: env.MAIL_USER,
+          pass: env.MAIL_PASS,
         },
       }),
     );
@@ -34,7 +34,7 @@ export class EmailService {
     try {
       const info: SMTPTransport.SentMessageInfo =
         await this.transporter.sendMail({
-          from: `OpenProfile <${env.SMTP_FROM}>`,
+          from: env.MAIL_FROM,
           to,
           subject: "You're on the OpenProfile wait list!",
           html: this.getWaitlistEmailHtml(),

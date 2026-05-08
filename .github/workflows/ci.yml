@@ -33,6 +33,15 @@ jobs:
       DATABASE_NAME: test_db
       JWT_ACCESS_SECRET: ci-only-not-a-real-secret-access-key-min-32-chars
       JWT_REFRESH_SECRET: ci-only-not-a-real-secret-refresh-key-min-32-chars
+      REDIS_URL: redis://localhost:6379
+      APP_URL: http://localhost:3000/
+
+      MAIL_HOST: smtp.gmail.com
+      MAIL_PORT: 465
+      MAIL_USER: test@test.com
+      MAIL_PASS: some-password
+      MAIL_FROM: 'test@test.com'
+      MAIL_SECURE: true
 
     steps:
       - name: Checkout code
