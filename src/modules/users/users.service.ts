@@ -91,4 +91,33 @@ export class UsersService {
       updatePayload: { refreshTokenHash: hash },
     });
   }
+
+  async setPasswordResetToken(id: string, tokenHash: string, expires: Date): Promise<void> {
+    await this.userModelAction.update({
+      ...NO_TRANSACTION,
+      identifierOptions: { id },
+      updatePayload: { passwordResetTokenHash: tokenHash, passwordResetExpires: expires },
+    });
+  }
+
+  async findByValidResetToken(tokenHash: string): Promise<User | null> {
+    return this.userModelAction.findByValidResetToken(tokenHash);
+  }
+
+  async clearPasswordResetToken(id: string): Promise<void> {
+    await this.userModelAction.update({
+      ...NO_TRANSACTION,
+      identifierOptions: { id },
+      updatePayload: { passwordResetTokenHash: null, passwordResetExpires: null },
+    });
+  }
+
+  async updatePassword(id: string, newPassword: string): Promise<void> {
+    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    await this.userModelAction.update({
+      ...NO_TRANSACTION,
+      identifierOptions: { id },
+      updatePayload: { password: passwordHash },
+    });
+  }
 }
