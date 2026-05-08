@@ -15,13 +15,14 @@ const mailSchema = z.object({
 export type MailConfig = z.infer<typeof mailSchema>;
 
 export const mailConfig = registerAs('mail', (): MailConfig => {
+  const isTest = env.NODE_ENV === 'test';
   return mailSchema.parse({
-    host: env.MAIL_HOST,
+    host: env.MAIL_HOST ?? (isTest ? 'localhost' : undefined),
     port: env.MAIL_PORT,
-    user: env.MAIL_USER,
-    pass: env.MAIL_PASS,
-    from: env.MAIL_FROM,
+    user: env.MAIL_USER ?? (isTest ? 'test' : undefined),
+    pass: env.MAIL_PASS ?? (isTest ? 'test' : undefined),
+    from: env.MAIL_FROM ?? (isTest ? 'test@test.com' : undefined),
     secure: env.MAIL_SECURE ?? false,
-    appUrl: env.APP_URL,
+    appUrl: env.APP_URL ?? (isTest ? 'http://localhost' : undefined),
   });
 });
