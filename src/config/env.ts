@@ -3,12 +3,8 @@ import * as dotenv from 'dotenv';
 import { z } from 'zod';
 
 dotenv.config();
-type EnvSchema = {
-  [K in keyof typeof envSchema]: z.infer<(typeof envSchema)[K]>;
-};
 
-
-export const env:EnvSchema = createEnv({
+export const env = createEnv({
   server: {
     NODE_ENV: z
       .enum(['development', 'test', 'production'])

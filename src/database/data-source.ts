@@ -4,15 +4,15 @@ import { env } from '../config/env';
 
 export const dataSourceOptions: DataSourceOptions = {
   type: 'postgres',
-  host: env.DATABASE_HOST,
-  port: env.DATABASE_PORT,
-  username: env.DATABASE_USER,
-  password: env.DATABASE_PASSWORD,
-  database: env.DATABASE_NAME,
+  host: env.DATABASE_HOST as string,
+  port: env.DATABASE_PORT as number,
+  username: env.DATABASE_USER as string,
+  password: env.DATABASE_PASSWORD as string,
+  database: env.DATABASE_NAME as string,
   entities: [__dirname + '/../**/*.entity{.ts,.js}'],
   migrations: [__dirname + '/migrations/*{.ts,.js}'],
   synchronize: false,
-  logging: env.DATABASE_LOGGING,
+  logging: env.DATABASE_LOGGING as boolean,
   ssl: env.DATABASE_SSL ? { rejectUnauthorized: false } : false,
 };
 
