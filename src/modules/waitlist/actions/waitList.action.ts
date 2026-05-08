@@ -1,7 +1,7 @@
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Injectable } from '@nestjs/common';
-import { WaitList } from '../entities/waitList.entity.js';
+import { WaitList } from '../entities/waitList.entity';
 
 @Injectable()
 export class WaitListModelAction {

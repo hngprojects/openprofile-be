@@ -3,12 +3,11 @@
   "rootDir": "..",
   "testEnvironment": "node",
   "testRegex": "test/.*\\.e2e-spec\\.ts$",
-      "types": ["node", "jest"],
+  "types": ["node", "jest"],
   "transform": {
     "^.+\\.(t|j)s$": [
       "ts-jest",
       {
-        "useESM": true,
         "diagnostics": false,
         "tsconfig": "<rootDir>/test/tsconfig.e2e.json"
       }
@@ -20,6 +19,5 @@
   "moduleNameMapper": {
     "^(\\.{1,2}/.*)\\.js$": "$1"
   },
-  "extensionsToTreatAsEsm": [".ts"],
   "testTimeout": 30000
 }

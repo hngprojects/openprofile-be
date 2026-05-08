@@ -1,7 +1,7 @@
 import SMTPTransport from 'nodemailer/lib/smtp-transport/index.js';
 import { Injectable, Logger } from '@nestjs/common';
-import { env } from '../../config/env.js';
 import { createTransport, Transporter } from 'nodemailer';
+import { env } from '../../config/env';
 
 interface EmailResult {
   success: boolean;
@@ -17,12 +17,12 @@ export class EmailService {
   constructor() {
     this.transporter = createTransport<SMTPTransport.SentMessageInfo>(
       new SMTPTransport({
-        host: env.SMTP_HOST as string,
-        port: env.SMTP_PORT as number,
+        host: env.SMTP_HOST || 'smtp.gmail.com',
+        port: env.SMTP_PORT,
         secure: env.SMTP_PORT === 465,
         auth: {
-          user: env.SMTP_USER as string,
-          pass: env.SMTP_PASSWORD as string,
+          user: env.SMTP_USER,
+          pass: env.SMTP_PASSWORD,
         },
       }),
     );
