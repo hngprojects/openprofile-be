@@ -19,7 +19,7 @@ export class MailProcessor extends WorkerHost {
     this.mailService = mailService;
   }
 
-  async process(job: Job): Promise<any> {
+  async process(job: Job<ResetPasswordEmailData>): Promise<void> {
     switch (job.name) {
       case QUEUE_JOB_NAMES.EMAIL.SEND_PASSWORD_RESET:
         await this.handleSendPasswordResetEmail(job.data);
@@ -39,11 +39,12 @@ export class MailProcessor extends WorkerHost {
   }
 
   @OnWorkerEvent('completed')
-  async handleCompleted(job: Job) {
+  handleCompleted(job: Job) {
     this.logger.log(`Job ${job.id} completed successfully.`);
   }
+
   @OnWorkerEvent('failed')
-  async handleFailed(job: Job, error: Error) {
+  handleFailed(job: Job, error: Error) {
     this.logger.error(
       `Job ${job.id} failed with error: ${error.message}`,
       error.stack,

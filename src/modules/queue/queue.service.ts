@@ -24,19 +24,21 @@ export class QueueService {
       const queue = this.getQueue(queueName);
       const job = await queue.add(jobName, data, options);
       this.logger.log(
-        `Added job ${jobName} to queue ${queueName} with id ${job.id}`,
+        `Added job ${String(jobName)} to queue ${String(queueName)} with id ${String(
+          job.id,
+        )}`,
       );
       return job;
     } catch (error) {
       // `error` is `unknown` in TS; narrow it before accessing properties
       if (error instanceof Error) {
         this.logger.error(
-          `Error adding job ${jobName} to queue ${queueName}: ${error.message}`,
+          `Error adding job ${String(jobName)} to queue ${String(queueName)}: ${error.message}`,
           error.stack,
         );
       } else {
         this.logger.error(
-          `Error adding job ${jobName} to queue ${queueName}: ${String(error)}`,
+          `Error adding job ${String(jobName)} to queue ${String(queueName)}: ${String(error)}`,
         );
       }
       throw error;
@@ -49,7 +51,7 @@ export class QueueService {
       case QUEUE_NAMES.EMAIL:
         return this.emailQueue;
       default:
-        throw new Error(`Unknown queue name: ${queueName}`);
+        throw new Error(`Unknown queue name: ${String(queueName)}`);
     }
   }
 }
