@@ -26,21 +26,13 @@ jobs:
           --health-retries 5
 
     env:
+      NODE_ENV: test
       DATABASE_HOST: localhost
       DATABASE_USER: test_user
       DATABASE_PASSWORD: test_password
       DATABASE_NAME: test_db
       JWT_ACCESS_SECRET: ci-only-not-a-real-secret-access-key-min-32-chars
       JWT_REFRESH_SECRET: ci-only-not-a-real-secret-refresh-key-min-32-chars
-      SMTP_HOST: smtp.example.com
-      SMTP_PORT: 587
-      SMTP_USERNAME: test_user
-      SMTP_PASSWORD: test_password
-      SMTP_FROM: test@example.com
-      REDIS_HOST: localhost
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: test_password
-      REDIS_DB: 0
 
     steps:
       - name: Checkout code

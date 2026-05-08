@@ -8,9 +8,9 @@ import { User } from '../entities/user.entity';
 export class UserModelAction extends AbstractModelAction<User> {
   constructor(
     @InjectRepository(User)
-    repository: Repository<User>,
+    private readonly repo: Repository<User>,
   ) {
-    super(repository, User);
+    super(repo, User);
   }
 
   async findByEmail(email: string): Promise<User | null> {
