@@ -1,6 +1,6 @@
-import { Repository } from 'typeorm';
+import { QueryFailedError, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { WaitList } from '../entities/waitList.entity';
 
 @Injectable()
@@ -12,16 +12,22 @@ export class WaitListModelAction {
 
   async create(email: string): Promise<WaitList> {
     const normalizedEmail = email.toLowerCase();
-    const existing = await this.waitListRepository.findOne({
-      where: { email: normalizedEmail },
-    });
-    if (existing) {
-      throw new Error('Email already in waitList');
-    }
+
     const waitListEntry = this.waitListRepository.create({
       email: normalizedEmail,
     });
-    return this.waitListRepository.save(waitListEntry);
+
+    try {
+      return await this.waitListRepository.save(waitListEntry);
+    } catch (error) {
+      if (
+        error instanceof QueryFailedError &&
+        (error as unknown as { code: string }).code === '23505'
+      ) {
+        throw new ConflictException('Email already in waitList');
+      }
+      throw error;
+    }
   }
 
   async findByEmail(email: string): Promise<WaitList | null> {
