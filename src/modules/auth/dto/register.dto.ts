@@ -1,21 +1,50 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsString,
+  MaxLength,
+  MinLength,
+  Matches,
+} from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class RegisterDto {
+ 
   @ApiProperty({ example: 'user@example.com' })
-  @IsEmail()
-  @MaxLength(255)
+  @IsNotEmpty({ message: 'Email address is required.' })
+  @IsEmail({}, { message: 'Please enter a valid email address.' })
+  @MaxLength(255, { message: 'Email must be at most 255 characters.' })
+  // Normalise to lowercase so 'User@Gmail.com' === 'user@gmail.com' (edge case #3)
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim().toLowerCase() : value,
+  )
   email: string;
 
-  @ApiProperty({ minLength: 8, maxLength: 128 })
-  @IsString()
-  @MinLength(8)
-  @MaxLength(128)
+  @ApiProperty({
+    description:
+      'Min 8 chars, at least one uppercase letter, one number, one special character.',
+    minLength: 8,
+    maxLength: 128,
+  })
+  @IsNotEmpty({ message: 'Password is required.' })
+  @IsString({ message: 'Password is required.' })
+  @MinLength(8, {
+    message:
+      'Password must be at least 8 characters and include one uppercase letter, one number, and one special character.',
+  })
+  @MaxLength(128, { message: 'Password must be at most 128 characters.' })
+  @Matches(/^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/, {
+    message:
+      'Password must be at least 8 characters and include one uppercase letter, one number, and one special character.',
+  })
   password: string;
 
   @ApiProperty({ example: 'Jane Doe' })
-  @IsString()
-  @MinLength(1)
-  @MaxLength(255)
+  @IsString({ message: 'Full name is required' })
+  @IsNotEmpty({ message: 'Full name is required' })
+  @MinLength(1, { message: 'Full name is required' })
+  @MaxLength(255, { message: 'Full name must not be more than 255 characters' })
+  @Transform(({value}: {value: unknown}) => typeof value === 'string' ? value.trim() : value )
   fullName: string;
 }
