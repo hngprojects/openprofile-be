@@ -5,11 +5,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { v7 as uuidv7 } from 'uuid';
 import { UserModelAction } from './actions/user.action';
+import { ResetPasswordModelAction } from './actions/reset-password.action';
 import { CreateUserDto } from './dto/create-user.dto';
 import { PaginationDto } from './dto/pagination.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
+import { ResetPassword } from '../auth/entities/reset-password.entity';
 
 const BCRYPT_ROUNDS = 10;
 const NO_TRANSACTION = {
@@ -18,7 +21,10 @@ const NO_TRANSACTION = {
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly userModelAction: UserModelAction) {}
+  constructor(
+    private readonly userModelAction: UserModelAction,
+    private readonly resetPasswordAction: ResetPasswordModelAction,
+  ) {}
 
   async create(dto: CreateUserDto): Promise<User> {
     const existing = await this.userModelAction.findByEmail(dto.email);
@@ -92,24 +98,40 @@ export class UsersService {
     });
   }
 
-  async setPasswordResetToken(id: string, tokenHash: string, expires: Date): Promise<void> {
-    await this.userModelAction.update({
-      ...NO_TRANSACTION,
-      identifierOptions: { id },
-      updatePayload: { passwordResetTokenHash: tokenHash, passwordResetExpires: expires },
+  async setPasswordResetToken(
+    id: string,
+    tokenHash: string,
+    expires: Date,
+  ): Promise<ResetPassword> {
+    return this.resetPasswordAction.create({
+      transactionOptions: { useTransaction: false },
+      createPayload: {
+        id: uuidv7(),
+        userId: id,
+        tokenHash,
+        expires_at: expires,
+        used: false,
+      },
     });
   }
 
-  async findByValidResetToken(tokenHash: string): Promise<User | null> {
-    return this.userModelAction.findByValidResetToken(tokenHash);
+  async findByValidResetToken(
+    tokenHash: string,
+  ): Promise<{ user: User; resetPassword: ResetPassword } | null> {
+    const resetPassword =
+      await this.resetPasswordAction.findByValidToken(tokenHash);
+    if (!resetPassword) return null;
+
+    const user = await this.findOne(resetPassword.userId);
+    return { user, resetPassword };
   }
 
   async clearPasswordResetToken(id: string): Promise<void> {
-    await this.userModelAction.update({
-      ...NO_TRANSACTION,
-      identifierOptions: { id },
-      updatePayload: { passwordResetTokenHash: null, passwordResetExpires: null },
-    });
+    await this.resetPasswordAction.deleteByUserId(id);
+  }
+
+  async markPasswordResetAsUsed(resetPasswordId: string): Promise<void> {
+    await this.resetPasswordAction.markAsUsed(resetPasswordId);
   }
 
   async updatePassword(id: string, newPassword: string): Promise<void> {

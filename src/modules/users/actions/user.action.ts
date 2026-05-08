@@ -16,12 +16,4 @@ export class UserModelAction extends AbstractModelAction<User> {
   async findByEmail(email: string): Promise<User | null> {
     return this.get({ identifierOptions: { email } });
   }
-
-  async findByValidResetToken(tokenHash: string): Promise<User | null> {
-    return this.repo
-      .createQueryBuilder('user')
-      .where('user.passwordResetTokenHash = :tokenHash', { tokenHash })
-      .andWhere('user.passwordResetExpires > CURRENT_TIMESTAMP')
-      .getOne();
-  }
 }

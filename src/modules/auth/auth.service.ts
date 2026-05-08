@@ -29,14 +29,7 @@ export interface AuthTokens {
 }
 
 export interface AuthResponse extends AuthTokens {
-  user: Omit<
-    User,
-    | 'password'
-    | 'refreshTokenHash'
-    | 'deletedAt'
-    | 'passwordResetTokenHash'
-    | 'passwordResetExpires'
-  >;
+  user: Omit<User, 'password' | 'refreshTokenHash' | 'deletedAt'>;
 }
 
 @Injectable()
@@ -97,7 +90,9 @@ export class AuthService {
     return this.usersService.findOne(userId);
   }
 
-  async forgotPassword(dto: ForgotPasswordDto): Promise<void> {
+  async forgotPassword(
+    dto: ForgotPasswordDto,
+  ): Promise<Record<string, string> | undefined> {
     const user = await this.usersService.findByEmail(dto.email);
     if (!user) return; // don't reveal whether the email exists
 
@@ -119,10 +114,11 @@ export class AuthService {
       QUEUE_NAMES.EMAIL,
       QUEUE_JOB_NAMES.EMAIL.SEND_PASSWORD_RESET,
       payload,
-      {
-        jobId: `user-${user.id}`,
-      },
     );
+
+    return {
+      message: 'A password reset link has been sent to the provided email',
+    };
   }
 
   async resetPassword(dto: ResetPasswordDto): Promise<void> {
@@ -130,13 +126,15 @@ export class AuthService {
       .createHash('sha256')
       .update(dto.token)
       .digest('hex');
-    const user = await this.usersService.findByValidResetToken(tokenHash);
+    const result = await this.usersService.findByValidResetToken(tokenHash);
 
-    if (!user) {
+    if (!result) {
       throw new BadRequestException('Invalid or expired reset token');
     }
 
+    const { user, resetPassword } = result;
     await this.usersService.updatePassword(user.id, dto.password);
+    await this.usersService.markPasswordResetAsUsed(resetPassword.id);
     await this.usersService.clearPasswordResetToken(user.id);
   }
 
@@ -145,14 +143,7 @@ export class AuthService {
     await this.persistRefreshToken(user.id, tokens.refreshToken);
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const {
-      password,
-      refreshTokenHash,
-      deletedAt,
-      passwordResetTokenHash,
-      passwordResetExpires,
-      ...safeUser
-    } = user;
+    const { password, refreshTokenHash, deletedAt, ...safeUser } = user;
 
     return { ...tokens, user: safeUser };
   }
