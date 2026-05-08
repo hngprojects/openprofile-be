@@ -20,8 +20,8 @@ export class UserModelAction extends AbstractModelAction<User> {
   async findByValidResetToken(tokenHash: string): Promise<User | null> {
     return this.repo
       .createQueryBuilder('user')
-      .where('user.password_reset_token_hash = :tokenHash', { tokenHash })
-      .andWhere('user.password_reset_expires > :now', { now: new Date() })
+      .where('user.passwordResetTokenHash = :tokenHash', { tokenHash })
+      .andWhere('user.passwordResetExpires > CURRENT_TIMESTAMP')
       .getOne();
   }
 }
