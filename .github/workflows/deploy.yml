@@ -113,7 +113,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
-            cd /var/www/openprofile-be/staging
+            cd /var/www/openprofile-be
             cp envfile/.env.staging  staging/.env
 
       - name: Install dependencies and build
@@ -175,7 +175,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
-            cd /var/www/openprofile-be/main
+            cd /var/www/openprofile-be
             cp envfile/.env.prod  main/.env
 
       - name: Install dependencies and build
