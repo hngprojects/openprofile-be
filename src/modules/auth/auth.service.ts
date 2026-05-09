@@ -118,6 +118,8 @@ export class AuthService {
 
       await this.usersService.setPasswordResetToken(user.id, tokenSelector, tokenHash, expires);
 
+      
+
       const payload: ResetPasswordEmailData = {
         to: user.email,
         resetLink: `https://openprofile.com/reset-password?token=${rawToken}`,
