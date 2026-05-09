@@ -15,7 +15,6 @@ export class RegisterDto {
   @IsNotEmpty({ message: 'Email address is required.' })
   @IsEmail({}, { message: 'Please enter a valid email address.' })
   @MaxLength(255, { message: 'Email must be at most 255 characters.' })
-  // Normalise to lowercase so 'User@Gmail.com' === 'user@gmail.com' (edge case #3)
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim().toLowerCase() : value,
   )
