@@ -187,7 +187,7 @@ export class AuthService {
 
       const payload: ResetPasswordEmailData = {
         to: user.email,
-        resetLink: `https://openprofile.com/reset-password?token=${rawToken}`,
+        resetLink: `${env.FRONTEND_URL}/reset-password?token=${rawToken}`,
       };
 
       await this.queueService.addJob<ResetPasswordEmailData>(
