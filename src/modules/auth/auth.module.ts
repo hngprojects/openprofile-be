@@ -3,6 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { env } from '../../config/env';
 import { MailModule } from '../mail/mail.module';
+import { RateLimiterModule } from '../rate-limiter/rate-limiter.module';
 import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -21,6 +22,7 @@ import { GoogleStrategy } from './strategies/google.strategy';
     UsersModule,
     MailModule,
     QueueModule,
+    RateLimiterModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, GoogleStrategy],
