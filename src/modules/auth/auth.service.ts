@@ -36,7 +36,6 @@ import { ResetPasswordEmailData } from '../mail/interfaces/reset-password-email.
 import { AccountLockedEmailData } from '../mail/interfaces/account-locked-email.interface';
 import { NewIpLoginEmailData } from '../mail/interfaces/new-ip-login-email.interface';
 import { GoogleUser } from './interfaces/google.interface';
-const BCRYPT_ROUNDS = 10;
 
 const FORGOT_PASSWORD_GENERIC_MSG =
   'If an account exists for this email, a reset link has been sent.';
