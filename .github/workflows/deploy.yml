@@ -57,6 +57,9 @@ jobs:
       MAIL_PASS: test-password
       MAIL_FROM: test@test.com
       MAIL_SECURE: true
+      FRONTEND_URL: http://localhost:3000
+      CLIENT_ID: test-client-id
+      CLIENT_SECRET: test-client-secret
 
     steps:
       - name: Checkout code
