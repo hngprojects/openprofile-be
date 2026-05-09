@@ -11,6 +11,42 @@ jobs:
     name: CI — Build, Lint & Test
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: ${{ secrets.TEST_DB_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.TEST_DB_NAME }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      NODE_ENV: test
+      DATABASE_HOST: localhost
+      DATABASE_PORT: 5432
+      DATABASE_USER: ${{ secrets.TEST_DB_USER }}
+      DATABASE_PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
+      DATABASE_NAME: ${{ secrets.TEST_DB_NAME }}
+      DATABASE_SYNC: false
+      DATABASE_SSL: false
+      JWT_ACCESS_SECRET: ${{ secrets.JWT_ACCESS_SECRET }}
+      JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+      REDIS_URL: redis://localhost:6379
+      APP_URL: http://localhost:3000/
+      MAIL_HOST: ${{ secrets.MAIL_HOST }}
+      MAIL_PORT: ${{ secrets.MAIL_PORT }}
+      MAIL_USER: ${{ secrets.MAIL_USER }}
+      MAIL_PASS: ${{ secrets.MAIL_PASS }}
+      MAIL_FROM: ${{ secrets.MAIL_FROM }}
+      MAIL_SECURE: ${{ secrets.MAIL_SECURE }}
+      SWAGGER_ENABLED: false
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
