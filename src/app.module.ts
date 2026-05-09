@@ -1,4 +1,8 @@
-import { Module, UnprocessableEntityException, ValidationPipe } from '@nestjs/common';
+import {
+  Module,
+  UnprocessableEntityException,
+  ValidationPipe,
+} from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
@@ -17,6 +21,7 @@ import { WaitlistModule } from './modules/waitlist/waitlist.module';
 import { UsersModule } from './modules/users/users.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { MailModule } from './modules/mail/mail.module';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
   imports: [
@@ -24,6 +29,12 @@ import { MailModule } from './modules/mail/mail.module';
       isGlobal: true,
       load: [appConfig, databaseConfig, jwtConfig],
     }),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60_000,
+        limit: 100,
+      },
+    ]),
     TypeOrmModule.forRootAsync({
       useFactory: (): TypeOrmModuleOptions => databaseConfig(),
     }),
@@ -43,10 +54,13 @@ import { MailModule } from './modules/mail/mail.module';
         transform: true,
         forbidNonWhitelisted: true,
         transformOptions: { enableImplicitConversion: false },
-        exceptionFactory: (errors) =>
-          new UnprocessableEntityException(
-            errors.flatMap((e) => Object.values(e.constraints ?? {})),
-          ),
+        exceptionFactory: (errors) => {
+          const formatted = errors.map((e) => ({
+            field: e.property,
+            error: Object.values(e.constraints ?? {}).join(', '),
+          }));
+          return new UnprocessableEntityException(formatted);
+        },
       }),
     },
     { provide: APP_GUARD, useClass: JwtAuthGuard },

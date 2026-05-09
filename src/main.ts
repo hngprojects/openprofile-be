@@ -30,6 +30,7 @@ async function bootstrap() {
       .setTitle('OpenProfile BE')
       .setDescription('REST API documentation')
       .setVersion('1.0.0')
+      .addServer(`http://localhost:${env.PORT}`)
       .addBearerAuth(
         { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
         'JWT',
@@ -41,12 +42,12 @@ async function bootstrap() {
     });
   }
 
-  await app.listen(env.PORT as number);
+  await app.listen(env.PORT);
 
   const logger = new Logger('Bootstrap');
-  logger.log(`Application running on http://localhost:${env.PORT as number}`);
-  if (env.SWAGGER_ENABLED as boolean) {
-    logger.log(`Swagger docs at http://localhost:${env.PORT as number}/docs`);
+  logger.log(`Application running on http://localhost:${env.PORT}`);
+  if (env.SWAGGER_ENABLED) {
+    logger.log(`Swagger docs at http://localhost:${env.PORT}/docs`);
   }
 }
 

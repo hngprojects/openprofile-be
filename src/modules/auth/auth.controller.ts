@@ -7,9 +7,11 @@ import {
   Post,
   Req,
   Res,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { env } from '../../config/env';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
@@ -19,6 +21,11 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { GoogleAuthGuard } from './guards/google-auth.guard';
+import { setAuthCookies } from './utils/cookie.utils';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import type { GoogleAuthRequest } from './interfaces/google.interface';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -28,9 +35,21 @@ export class AuthController {
   @Public()
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Register a new user' })
-  register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto);
+  @ApiOperation({ summary: 'Register a new user with email and password' })
+  async register(
+    @Body() dto: RegisterDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.register(dto);
+
+    if ('httpStatus' in result) {
+      const { httpStatus, ...body } = result;
+      res.status(httpStatus);
+      return body;
+    }
+
+    res.status(HttpStatus.CREATED);
+    return result;
   }
 
   @Public()
@@ -88,5 +107,79 @@ export class AuthController {
   @ApiOperation({ summary: 'Reset password using token from email' })
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
+  }
+
+  @Public()
+  @Post('verify-otp')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify OTP for email verification' })
+  async verifyOtp(
+    @Body() dto: VerifyOtpDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.verifyOtp(dto, res);
+
+    if ('httpStatus' in result) {
+      const { httpStatus, ...body } = result;
+      res.status(httpStatus as number);
+      return body;
+    }
+
+    res.status(HttpStatus.OK);
+    return result;
+  }
+
+  // google routes
+  @Public()
+  @Get('google')
+  @Throttle({
+    default: {
+      ttl: 900_000,
+      limit: 10,
+    },
+  })
+  @UseGuards(ThrottlerGuard, GoogleAuthGuard)
+  googleAuth() {}
+
+  @Public()
+  @Get('google/callback')
+  @Throttle({
+    default: {
+      ttl: 900_000,
+      limit: 10,
+    },
+  })
+  @UseGuards(ThrottlerGuard, GoogleAuthGuard)
+  async googleCallback(@Req() req: GoogleAuthRequest, @Res() res: Response) {
+    try {
+      /**
+       * req.user comes from GoogleStrategy validate()
+       * req.ip contains the client IP address
+       */
+      const response = await this.authService.loginGoogle(req.user, req.ip);
+
+      /**
+       * Set secure HTTP-only cookies for tokens
+       */
+      setAuthCookies(res, {
+        accessToken: response.accessToken,
+        refreshToken: response.refreshToken,
+      });
+
+      /**
+       * Redirect to onboarding for new users, dashboard for returning users
+       */
+      const redirectUrl = response.isNewUser
+        ? `${env.FRONTEND_URL}/onboarding`
+        : `${env.FRONTEND_URL}/dashboard`;
+
+      res.redirect(302, redirectUrl);
+    } catch {
+      /**
+       * Redirect to frontend with error on OAuth failure
+       */
+      const errorUrl = `${env.FRONTEND_URL}/auth?error=AUTH_FAILED&message=Google%20authentication%20failed.%20Please%20try%20again.`;
+      res.redirect(302, errorUrl);
+    }
   }
 }

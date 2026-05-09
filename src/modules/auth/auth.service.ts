@@ -1,6 +1,8 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
+  GoneException,
   HttpException,
   HttpStatus,
   Injectable,
@@ -12,14 +14,18 @@ import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
 import type { StringValue } from 'ms';
 import { env } from '../../config/env';
-import { AuthProvider, User } from '../users/entities/user.entity';
+import { AuthProvider, User, UserRole } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { JwtPayload } from './strategies/jwt.strategy';
 import { QueueService } from '../queue/queue.service';
+import { MailService } from '../mail/mail.service';
+import { RedisService } from '../../common/redis/redis.service';
+import type { Response } from 'express';
 import {
   QUEUE_JOB_NAMES,
   QUEUE_NAMES,
@@ -27,13 +33,7 @@ import {
 import { ResetPasswordEmailData } from '../mail/interfaces/reset-password-email.interface';
 import { AccountLockedEmailData } from '../mail/interfaces/account-locked-email.interface';
 import { NewIpLoginEmailData } from '../mail/interfaces/new-ip-login-email.interface';
-import { RedisService } from '../../common/redis/redis.service';
-import type { Response } from 'express';
-
-const BRUTE_MAX_ATTEMPTS = 5;
-const BRUTE_LOCKOUT_SECONDS = 30 * 60;
-const IP_RATE_LIMIT_MAX = 10;
-const IP_RATE_LIMIT_WINDOW_SECONDS = 15 * 60;
+import { GoogleUser } from './interfaces/google.interface';
 
 export interface AuthTokens {
   accessToken: string;
@@ -44,6 +44,29 @@ export interface AuthResponse extends AuthTokens {
   user: Omit<User, 'password' | 'refreshTokenHash' | 'deletedAt'>;
 }
 
+export interface RegisterSuccessResponse {
+  status: 'success';
+  message: string;
+}
+
+export interface RegisterDegradedResponse {
+  status: 'pending';
+  message: string;
+  httpStatus: typeof HttpStatus.ACCEPTED;
+}
+
+const OTP_TTL_MS = 5 * 60 * 1000;
+
+const BRUTE_MAX_ATTEMPTS = 5;
+const BRUTE_LOCKOUT_SECONDS = 30 * 60;
+const IP_RATE_LIMIT_MAX = 10;
+const IP_RATE_LIMIT_WINDOW_SECONDS = 15 * 60;
+
+export interface GoogleAuthResponse extends AuthTokens {
+  user: Omit<User, 'password' | 'refreshTokenHash' | 'deletedAt'>;
+  isNewUser: boolean;
+}
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -52,16 +75,51 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly queueService: QueueService,
+    private readonly mailService: MailService,
     private readonly redisService: RedisService,
   ) {}
 
-  async register(dto: RegisterDto): Promise<AuthResponse> {
-    const user = await this.usersService.create({
+  async register(
+    dto: RegisterDto,
+  ): Promise<RegisterSuccessResponse | RegisterDegradedResponse> {
+    const user = await this.usersService.createEmailUser({
       email: dto.email,
       password: dto.password,
       fullName: dto.fullName,
     });
-    return this.issueTokens(user);
+
+    const otp = this.generateOtp();
+    const otpHash = await argon2.hash(otp);
+    const otpExpiresAt = new Date(Date.now() + OTP_TTL_MS);
+
+    await this.usersService.storeOtpHash(user.id, otpHash, otpExpiresAt);
+
+    try {
+      await this.mailService.sendVerificationOtp(
+        user.email,
+        user.fullName,
+        otp,
+      );
+    } catch (err) {
+      // Edge case #1: log failure, return 202, user record is intact
+      this.logger.error(
+        `Resend failure for user ${user.id} (${user.email})`,
+        err instanceof Error ? err.stack : err,
+      );
+
+      return {
+        status: 'pending',
+        message:
+          'Account created but we could not send your verification email. Please use the resend option.',
+        httpStatus: HttpStatus.ACCEPTED,
+      };
+    }
+
+    // AC #11, AC #12: 201, no tokens
+    return {
+      status: 'success',
+      message: 'A verification code has been sent to your email address.',
+    };
   }
 
   async login(
@@ -101,10 +159,18 @@ export class AuthService {
       });
     }
 
-    if (user.provider !== AuthProvider.LOCAL) {
+    if (user.authProvider !== AuthProvider.EMAIL) {
       throw new BadRequestException({
         error: 'WRONG_PROVIDER',
-        message: `This account was created with ${user.provider === AuthProvider.GOOGLE ? 'Google' : user.provider}. Please use the Continue with ${user.provider === AuthProvider.GOOGLE ? 'Google' : user.provider} button.`,
+        message: `This account was created with ${
+          user.authProvider === AuthProvider.GOOGLE
+            ? 'Google'
+            : user.authProvider
+        }. Please use the Continue with ${
+          user.authProvider === AuthProvider.GOOGLE
+            ? 'Google'
+            : user.authProvider
+        } button.`,
       });
     }
 
@@ -192,7 +258,7 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
-        role: user.role,
+        role: user.role ?? UserRole.USER,
         onboardingComplete: user.onboardingComplete,
       },
     };
@@ -281,6 +347,90 @@ export class AuthService {
     await this.usersService.clearPasswordResetToken(user.id);
   }
 
+  async verifyOtp(
+    dto: VerifyOtpDto,
+    res: Response,
+  ): Promise<{
+    status: string;
+    message: string;
+    user: {
+      id: string;
+      email: string;
+      role: string | null;
+      onboardingComplete: boolean;
+    };
+  }> {
+    const lowercasedEmail = dto.email.toLowerCase();
+    const user = await this.usersService.findByEmail(lowercasedEmail);
+
+    if (!user) {
+      throw new BadRequestException('No account found for this email address.');
+    }
+
+    if (user.isVerified) {
+      throw new ConflictException(
+        'This account has already been verified. Please log in.',
+      );
+    }
+
+    if (!user.otpHash || !user.otpExpiresAt) {
+      throw new BadRequestException(
+        'No OTP found for this email. Please request a new verification code.',
+      );
+    }
+
+    if (new Date() > user.otpExpiresAt) {
+      throw new GoneException({
+        errorCode: 'OTP_EXPIRED',
+        message:
+          'Your verification code has expired. Please request a new one.',
+      });
+    }
+
+    const isValid = await argon2.verify(user.otpHash!, dto.otp);
+    if (!isValid) {
+      throw new BadRequestException({
+        errorCode: 'OTP_INVALID',
+        message:
+          'That code is incorrect. Please check your email and try again.',
+      });
+    }
+
+    await this.usersService.clearOtp(user.id);
+
+    const tokens = await this.issueTokens(user);
+
+    res.cookie('accessToken', tokens.accessToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+
+    res.cookie('refreshToken', tokens.refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password, refreshTokenHash, deletedAt, ...safeUser } = user;
+
+    return {
+      status: 'success',
+      message: 'Email verified successfully.',
+      user: {
+        id: safeUser.id,
+        email: safeUser.email,
+        role: safeUser.role,
+        onboardingComplete: safeUser.onboardingComplete,
+      },
+    };
+  }
+
+  // Helper method to simulate OTP generation and sending for non-existent emails
+
   private async issueTokens(user: User): Promise<AuthResponse> {
     const tokens = await this.signTokens(user);
     await this.persistRefreshToken(user.id, tokens.refreshToken);
@@ -295,7 +445,7 @@ export class AuthService {
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
-      role: user.role,
+      role: user.role ?? UserRole.USER,
       onboardingComplete: user.onboardingComplete,
     };
     const [accessToken, refreshToken] = await Promise.all([
@@ -317,5 +467,86 @@ export class AuthService {
   ): Promise<void> {
     const hash = await argon2.hash(refreshToken);
     await this.usersService.setRefreshTokenHash(userId, hash);
+  }
+
+  private generateOtp(): string {
+    return crypto.randomInt(100_000, 1_000_000).toString();
+  }
+
+  async validateGoogleUser(
+    googleUser: GoogleUser,
+  ): Promise<{ user: User; isNewUser: boolean }> {
+    let user = await this.usersService.findByEmail(googleUser.email);
+    let isNewUser = false;
+
+    if (user) {
+      /**
+       * Link google account if not already linked (email account exists)
+       */
+      if (user.authProvider === AuthProvider.EMAIL) {
+        await this.usersService.linkGoogleAccount(user.id);
+        user = await this.usersService.findOne(user.id);
+      }
+
+      return { user, isNewUser };
+    }
+
+    /**
+     * If user does not exist, create a new Google user with is_verified = true and onboardingComplete = false
+     */
+    const created = await this.usersService.createGoogleUser({
+      email: googleUser.email,
+      fullName: googleUser.fullName,
+      isVerified: true,
+      onboardingComplete: false,
+    });
+
+    isNewUser = true;
+    return { user: created, isNewUser };
+  }
+
+  async loginGoogle(
+    user: User,
+    ipAddress: string,
+  ): Promise<GoogleAuthResponse> {
+    /**
+     * Log the OAuth login with timestamp, IP, and user ID
+     */
+    this.usersService.logOAuthLogin(user.id, ipAddress, 'google');
+
+    /**
+     * Generate tokens with full payload: sub, email, role, onboardingComplete
+     */
+    const tokens = await this.signGoogleTokens(user);
+    await this.persistRefreshToken(user.id, tokens.refreshToken);
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password, refreshTokenHash, deletedAt, ...safeUser } = user;
+
+    return {
+      ...tokens,
+      user: safeUser,
+      isNewUser: !user.onboardingComplete,
+    };
+  }
+
+  private async signGoogleTokens(user: User): Promise<AuthTokens> {
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      onboardingComplete: user.onboardingComplete,
+    };
+    const [accessToken, refreshToken] = await Promise.all([
+      this.jwtService.signAsync(payload, {
+        secret: env.JWT_ACCESS_SECRET,
+        expiresIn: env.JWT_ACCESS_EXPIRES_IN as StringValue,
+      }),
+      this.jwtService.signAsync(payload, {
+        secret: env.JWT_REFRESH_SECRET,
+        expiresIn: env.JWT_REFRESH_EXPIRES_IN as StringValue,
+      }),
+    ]);
+    return { accessToken, refreshToken };
   }
 }

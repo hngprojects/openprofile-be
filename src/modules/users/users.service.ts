@@ -5,18 +5,22 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as argon2 from 'argon2';
+import * as crypto from 'crypto';
 import { v7 as uuidv7 } from 'uuid';
+import { UserRole } from './entities/user.entity';
 import { UserModelAction } from './actions/user.action';
 import { ResetPasswordModelAction } from './actions/reset-password.action';
 import { CreateUserDto } from './dto/create-user.dto';
 import { PaginationDto } from './dto/pagination.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { User } from './entities/user.entity';
+import { AuthProvider, User } from './entities/user.entity';
 import { ResetPassword } from '../auth/entities/reset-password.entity';
 
 const NO_TRANSACTION = {
   transactionOptions: { useTransaction: false as const },
 };
+
+export const EMAIL_ALREADY_EXISTS = 'EMAIL_ALREADY_EXISTS';
 
 @Injectable()
 export class UsersService {
@@ -148,5 +152,89 @@ export class UsersService {
       identifierOptions: { id },
       updatePayload: { lastLoginIp: ip },
     });
+  }
+
+  async createEmailUser(dto: {
+    email: string;
+    password: string;
+    fullName: string;
+  }): Promise<User> {
+    const lowercasedEmail = dto.email.toLowerCase();
+    const existing = await this.userModelAction.findByEmail(lowercasedEmail);
+    if (existing) {
+      throw new ConflictException({
+        error: EMAIL_ALREADY_EXISTS,
+        message: 'An account with this email already exists.',
+      });
+    }
+    const passwordHash = await argon2.hash(dto.password);
+    return this.userModelAction.create({
+      ...NO_TRANSACTION,
+      createPayload: {
+        email: lowercasedEmail,
+        password: passwordHash,
+        fullName: dto.fullName,
+        authProvider: AuthProvider.EMAIL,
+        role: null,
+        otpHash: null,
+        otpExpiresAt: null,
+      },
+    });
+  }
+
+  async storeOtpHash(
+    userId: string,
+    otpHash: string,
+    expiresAt: Date,
+  ): Promise<void> {
+    await this.userModelAction.update({
+      ...NO_TRANSACTION,
+      identifierOptions: { id: userId },
+      updatePayload: { otpHash, otpExpiresAt: expiresAt },
+    });
+  }
+
+  async clearOtp(userId: string): Promise<void> {
+    await this.userModelAction.update({
+      ...NO_TRANSACTION,
+      identifierOptions: { id: userId },
+      updatePayload: { otpHash: null, otpExpiresAt: null, isVerified: true },
+    });
+  }
+
+  async linkGoogleAccount(id: string): Promise<void> {
+    await this.userModelAction.update({
+      ...NO_TRANSACTION,
+      identifierOptions: { id },
+      updatePayload: { authProvider: AuthProvider.GOOGLE },
+    });
+  }
+
+  async createGoogleUser(dto: {
+    email: string;
+    fullName: string;
+    isVerified: boolean;
+    onboardingComplete: boolean;
+  }): Promise<User> {
+    const randomPassword = crypto.randomBytes(32).toString('hex');
+    const passwordHash = await argon2.hash(randomPassword);
+    return this.userModelAction.create({
+      ...NO_TRANSACTION,
+      createPayload: {
+        email: dto.email,
+        password: passwordHash,
+        fullName: dto.fullName,
+        authProvider: AuthProvider.GOOGLE,
+        isVerified: dto.isVerified,
+        onboardingComplete: dto.onboardingComplete,
+        role: null,
+      },
+    });
+  }
+
+  logOAuthLogin(userId: string, ipAddress: string, provider: string): void {
+    console.log(
+      `OAuth login: userId=${userId} provider=${provider} ip=${ipAddress} time=${new Date().toISOString()}`,
+    );
   }
 }

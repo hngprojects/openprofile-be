@@ -9,7 +9,7 @@ import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { QueueModule } from '../queue/queue.module';
 import { StringValue } from 'ms';
-import { RedisService } from '../../common/redis/redis.service';
+import { GoogleStrategy } from './strategies/google.strategy';
 
 @Module({
   imports: [
@@ -23,7 +23,7 @@ import { RedisService } from '../../common/redis/redis.service';
     QueueModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, RedisService],
+  providers: [AuthService, JwtStrategy, GoogleStrategy],
   exports: [AuthService],
 })
 export class AuthModule {}
