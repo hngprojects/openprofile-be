@@ -88,7 +88,11 @@ export class AuthController {
   @Public()
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
-  @UsePipes(new ValidationPipe({ errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY }))
+  @UsePipes(
+    new ValidationPipe({
+      errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+    }),
+  )
   @ApiOperation({ summary: 'Request a password reset email' })
   forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.authService.forgotPassword(dto);
@@ -97,7 +101,11 @@ export class AuthController {
   @Public()
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
-  @UsePipes(new ValidationPipe({ errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY }))
+  @UsePipes(
+    new ValidationPipe({
+      errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+    }),
+  )
   @ApiOperation({ summary: 'Reset password using token from email' })
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
@@ -175,5 +183,18 @@ export class AuthController {
       const errorUrl = `${env.FRONTEND_URL}/auth?error=AUTH_FAILED&message=Google%20authentication%20failed.%20Please%20try%20again.`;
       res.redirect(302, errorUrl);
     }
+  }
+
+  @Public()
+  @Post('resend-forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(
+    new ValidationPipe({
+      errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+    }),
+  )
+  @ApiOperation({ summary: 'Resend a password reset email' })
+  resendForgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.resendForgotPassword(dto);
   }
 }

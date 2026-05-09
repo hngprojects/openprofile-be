@@ -162,9 +162,15 @@ export class AuthService {
     return this.usersService.findOne(userId);
   }
 
-  async forgotPassword(dto: ForgotPasswordDto): Promise<Record<string, string>> {
+  async forgotPassword(
+    dto: ForgotPasswordDto,
+  ): Promise<Record<string, string>> {
     const rateLimitKey = `forgot-password:${dto.email}`;
-    const allowed = await this.rateLimiterService.isAllowed(rateLimitKey, 3, 3600);
+    const allowed = await this.rateLimiterService.isAllowed(
+      rateLimitKey,
+      3,
+      3600,
+    );
 
     if (!allowed) {
       throw new HttpException(
@@ -177,13 +183,19 @@ export class AuthService {
 
     if (user && user.password) {
       const rawToken = crypto.randomBytes(32).toString('hex');
-      const tokenSelector = crypto.createHash('sha256').update(rawToken).digest('hex');
+      const tokenSelector = crypto
+        .createHash('sha256')
+        .update(rawToken)
+        .digest('hex');
       const tokenHash = await argon2.hash(rawToken);
       const expires = new Date(Date.now() + 60 * 60 * 1000);
 
-      await this.usersService.setPasswordResetToken(user.id, tokenSelector, tokenHash, expires);
-
-      
+      await this.usersService.setPasswordResetToken(
+        user.id,
+        tokenSelector,
+        tokenHash,
+        expires,
+      );
 
       const payload: ResetPasswordEmailData = {
         to: user.email,
@@ -201,12 +213,19 @@ export class AuthService {
   }
 
   async resetPassword(dto: ResetPasswordDto): Promise<Record<string, string>> {
-    const tokenSelector = crypto.createHash('sha256').update(dto.token).digest('hex');
-    const resetRecord = await this.usersService.findResetTokenBySelector(tokenSelector);
+    const tokenSelector = crypto
+      .createHash('sha256')
+      .update(dto.token)
+      .digest('hex');
+    const resetRecord =
+      await this.usersService.findResetTokenBySelector(tokenSelector);
 
     if (!resetRecord) {
       throw new HttpException(
-        { errorCode: 'TOKEN_INVALID', message: 'This reset link is invalid. Please request a new one.' },
+        {
+          errorCode: 'TOKEN_INVALID',
+          message: 'This reset link is invalid. Please request a new one.',
+        },
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -214,21 +233,32 @@ export class AuthService {
     const isValid = await argon2.verify(resetRecord.tokenHash, dto.token);
     if (!isValid) {
       throw new HttpException(
-        { errorCode: 'TOKEN_INVALID', message: 'This reset link is invalid. Please request a new one.' },
+        {
+          errorCode: 'TOKEN_INVALID',
+          message: 'This reset link is invalid. Please request a new one.',
+        },
         HttpStatus.BAD_REQUEST,
       );
     }
 
     if (new Date() > resetRecord.expiresAt) {
       throw new HttpException(
-        { errorCode: 'TOKEN_EXPIRED', message: 'This reset link has expired. Please request a new password reset link.' },
+        {
+          errorCode: 'TOKEN_EXPIRED',
+          message:
+            'This reset link has expired. Please request a new password reset link.',
+        },
         HttpStatus.GONE,
       );
     }
 
     if (resetRecord.used) {
       throw new HttpException(
-        { errorCode: 'TOKEN_USED', message: 'This reset link has already been used. Please request a new one.' },
+        {
+          errorCode: 'TOKEN_USED',
+          message:
+            'This reset link has already been used. Please request a new one.',
+        },
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -244,7 +274,11 @@ export class AuthService {
       { to: user.email },
     );
 
-    return { status: 'success', message: 'Your password has been updated. Please log in with your new password.' };
+    return {
+      status: 'success',
+      message:
+        'Your password has been updated. Please log in with your new password.',
+    };
   }
 
   async verifyOtp(
@@ -443,5 +477,85 @@ export class AuthService {
       }),
     ]);
     return { accessToken, refreshToken };
+  }
+  async resendForgotPassword(
+    dto: ForgotPasswordDto,
+  ): Promise<Record<string, string>> {
+    //   Rate limit for resend (3/hr )
+    //    Resend is higher-risk — abusing it lets an attacker continuously
+    //    invalidate a victim's active token, locking them out of resetting.
+    const rateLimitKey = `resend-forgot-password:${dto.email}`;
+    const allowed = await this.rateLimiterService.isAllowed(
+      rateLimitKey,
+      3,
+      3600,
+    );
+
+    if (!allowed) {
+      throw new HttpException(
+        'You have requested too many reset links. Please wait 60 minutes before trying again.',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    const user = await this.usersService.findByEmail(dto.email);
+
+    // 3. Constant-time code path — always enter the block, never branch on user existence.
+    //    Prevents user enumeration via response-time differences.
+    if (user && user.password) {
+      // 4. 60-second cooldown: reject silently if a token was issued less than 60s ago.
+      //    Stops inbox-flooding and token-churn attacks that fit within the rate limit window.
+      const latestToken = await this.usersService.findLatestActiveByUserId(
+        user.id,
+      );
+
+      if (latestToken) {
+        const secondsSinceLastToken =
+          (Date.now() - latestToken.createdAt.getTime()) / 1000;
+
+        if (secondsSinceLastToken < 60) {
+          // Return generic response — don't reveal that a recent token exists.
+          return { status: 'success', message: FORGOT_PASSWORD_GENERIC_MSG };
+        }
+      }
+
+      // 5. Invalidate ALL existing active tokens before issuing a new one.
+      //    Ensures only one valid token exists at any time.
+      //    Revokes any previously intercepted/leaked token the moment resend is called.
+      await this.usersService.invalidateAllByUserId(user.id);
+
+      // 6. Generate a fresh split token (selector + argon2 verifier).
+      //    Selector: SHA-256 hash used for fast DB lookup (stored in plain text).
+      //    Verifier: argon2 hash — a DB leak cannot be used to directly trigger a reset.
+      const rawToken = crypto.randomBytes(32).toString('hex');
+      const tokenSelector = crypto
+        .createHash('sha256')
+        .update(rawToken)
+        .digest('hex');
+      const tokenHash = await argon2.hash(rawToken);
+      const expires = new Date(Date.now() + 60 * 60 * 1000); // 1-hour expiry
+
+      await this.usersService.setPasswordResetToken(
+        user.id,
+        tokenSelector,
+        tokenHash,
+        expires,
+      );
+
+      const payload: ResetPasswordEmailData = {
+        to: user.email,
+        resetLink: `https://openprofile.com/reset-password?token=${rawToken}`,
+      };
+
+      await this.queueService.addJob<ResetPasswordEmailData>(
+        QUEUE_NAMES.EMAIL,
+        QUEUE_JOB_NAMES.EMAIL.SEND_PASSWORD_RESET,
+        payload,
+      );
+    }
+
+    // 7. Always return the same generic response whether the user exists or not.
+    //    Prevents email enumeration via response body differences.
+    return { status: 'success', message: FORGOT_PASSWORD_GENERIC_MSG };
   }
 }

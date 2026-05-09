@@ -242,7 +242,20 @@ export class UsersService {
     });
   }
 
-  async findResetTokenBySelector(tokenSelector: string): Promise<ResetPassword | null> {
+  async findResetTokenBySelector(
+    tokenSelector: string,
+  ): Promise<ResetPassword | null> {
     return this.resetPasswordAction.findBySelector(tokenSelector);
+  }
+
+  async findLatestActiveByUserId(
+    userId: string,
+  ): Promise<ResetPassword | null> {
+    return this.resetPasswordAction.findLatestActiveByUserId(userId);
+  }
+
+  // Invalidates ALL active tokens for a user before issuing a new one
+  async invalidateAllByUserId(userId: string): Promise<void> {
+    await this.resetPasswordAction.invalidateAllByUserId(userId);
   }
 }

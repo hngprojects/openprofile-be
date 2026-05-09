@@ -25,7 +25,9 @@ export class MailService {
         user: this.mail.user,
         pass: this.mail.pass,
       },
+
       dnsLookup: (hostname, options, callback) =>
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         dns.lookup(hostname, { ...options, family: 4 }, callback),
     } as nodemailer.TransportOptions);
   }
@@ -47,13 +49,13 @@ export class MailService {
     otp: string,
   ): Promise<void> {
     this.logger.log(`Sending OTP email to ${toEmail}`);
- 
+
     await this.transporter.sendMail({
       to: toEmail,
       subject: OTP_EMAIL_SUBJECT,
       html: renderVerificationOtpEmail(fullName, otp),
     });
- 
+
     this.logger.log(`OTP email delivered to ${toEmail}`);
   }
 }
