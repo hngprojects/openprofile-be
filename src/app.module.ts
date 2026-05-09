@@ -1,4 +1,8 @@
-import { Module, ValidationPipe } from '@nestjs/common';
+import {
+  Module,
+  UnprocessableEntityException,
+  ValidationPipe,
+} from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
@@ -50,6 +54,13 @@ import { ThrottlerModule } from '@nestjs/throttler';
         transform: true,
         forbidNonWhitelisted: true,
         transformOptions: { enableImplicitConversion: false },
+        exceptionFactory: (errors) => {
+          const formatted = errors.map((e) => ({
+            field: e.property,
+            error: Object.values(e.constraints ?? {}).join(', '),
+          }));
+          return new UnprocessableEntityException(formatted);
+        },
       }),
     },
     { provide: APP_GUARD, useClass: JwtAuthGuard },

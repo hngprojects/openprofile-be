@@ -7,13 +7,13 @@ import {
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { v7 as uuidv7 } from 'uuid';
-import { AuthProvider, UserRole } from './entities/user.entity';
+import { UserRole } from './entities/user.entity';
 import { UserModelAction } from './actions/user.action';
 import { ResetPasswordModelAction } from './actions/reset-password.action';
 import { CreateUserDto } from './dto/create-user.dto';
 import { PaginationDto } from './dto/pagination.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { User } from './entities/user.entity';
+import { AuthProvider, User } from './entities/user.entity';
 import { ResetPassword } from '../auth/entities/reset-password.entity';
 
 const BCRYPT_ROUNDS = 10;
@@ -21,12 +21,63 @@ const NO_TRANSACTION = {
   transactionOptions: { useTransaction: false as const },
 };
 
+export const EMAIL_ALREADY_EXISTS = 'EMAIL_ALREADY_EXISTS';
+
 @Injectable()
 export class UsersService {
   constructor(
     private readonly userModelAction: UserModelAction,
     private readonly resetPasswordAction: ResetPasswordModelAction,
   ) {}
+
+  async createEmailUser(dto: CreateUserDto): Promise<User> {
+    const normalised = dto.email.toLowerCase();
+
+    const existing = await this.userModelAction.findByEmail(normalised);
+    if (existing) {
+      throw new ConflictException({
+        errorCode: EMAIL_ALREADY_EXISTS,
+        message:
+          'An account with this email already exists. Please log in instead.',
+      });
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
+
+    return this.userModelAction.create({
+      ...NO_TRANSACTION,
+      createPayload: {
+        email: normalised,
+        password: passwordHash,
+        fullName: dto.fullName,
+        role: null,
+        isVerified: false,
+        authProvider: AuthProvider.EMAIL as AuthProvider,
+        otpHash: null,
+        otpExpiresAt: null,
+      },
+    });
+  }
+
+  async storeOtpHash(
+    userId: string,
+    otpHash: string,
+    expiresAt: Date,
+  ): Promise<void> {
+    await this.userModelAction.update({
+      ...NO_TRANSACTION,
+      identifierOptions: { id: userId },
+      updatePayload: { otpHash, otpExpiresAt: expiresAt },
+    });
+  }
+
+  async clearOtp(userId: string): Promise<void> {
+    await this.userModelAction.update({
+      ...NO_TRANSACTION,
+      identifierOptions: { id: userId },
+      updatePayload: { otpHash: null, otpExpiresAt: null, isVerified: true },
+    });
+  }
 
   async create(dto: CreateUserDto): Promise<User> {
     const existing = await this.userModelAction.findByEmail(dto.email);
@@ -153,11 +204,7 @@ export class UsersService {
     });
   }
 
-  logOAuthLogin(
-    userId: string,
-    ipAddress: string,
-    provider: string,
-  ): void {
+  logOAuthLogin(userId: string, ipAddress: string, provider: string): void {
     const timestamp = new Date().toISOString();
     console.log(
       `OAuth Login - Provider: ${provider}, User: ${userId}, IP: ${ipAddress}, Timestamp: ${timestamp}`,

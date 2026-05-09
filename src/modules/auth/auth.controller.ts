@@ -5,12 +5,12 @@ import {
   HttpCode,
   HttpStatus,
   Post,
-  Req,
   Res,
+  Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { env } from '../../config/env';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
@@ -21,6 +21,7 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { setAuthCookies } from './utils/cookie.utils';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
@@ -34,9 +35,21 @@ export class AuthController {
   @Public()
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Register a new user' })
-  register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto);
+  @ApiOperation({ summary: 'Register a new user with email and password' })
+  async register(
+    @Body() dto: RegisterDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.register(dto);
+
+    if ('httpStatus' in result) {
+      const { httpStatus, ...body } = result;
+      res.status(httpStatus);
+      return body;
+    }
+
+    res.status(HttpStatus.CREATED);
+    return result;
   }
 
   @Public()
@@ -84,6 +97,26 @@ export class AuthController {
   @ApiOperation({ summary: 'Reset password using token from email' })
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
+  }
+
+  @Public()
+  @Post('verify-otp')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify OTP for email verification' })
+  async verifyOtp(
+    @Body() dto: VerifyOtpDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.verifyOtp(dto, res);
+
+    if ('httpStatus' in result) {
+      const { httpStatus, ...body } = result;
+      res.status(httpStatus as number);
+      return body;
+    }
+
+    res.status(HttpStatus.OK);
+    return result;
   }
 
   // google routes
