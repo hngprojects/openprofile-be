@@ -8,7 +8,6 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { randomInt } from 'crypto';
 import * as crypto from 'crypto';
 import type { StringValue } from 'ms';
 import { env } from '../../config/env';
@@ -23,6 +22,7 @@ import { JwtPayload } from './strategies/jwt.strategy';
 import { QueueService } from '../queue/queue.service';
 import { MailService } from '../mail/mail.service';
 import { Logger } from '@nestjs/common';
+import type { Response } from 'express';
 import {
   QUEUE_JOB_NAMES,
   QUEUE_NAMES,
@@ -30,6 +30,7 @@ import {
 import { ResetPasswordEmailData } from '../mail/interfaces/reset-password-email.interface';
 import { GoogleUser } from './interfaces/google.interface';
 import { AuthProvider } from '../users/entities/user.entity';
+const BCRYPT_ROUNDS = 10;
 
 export interface AuthTokens {
   accessToken: string;
@@ -39,6 +40,19 @@ export interface AuthTokens {
 export interface AuthResponse extends AuthTokens {
   user: Omit<User, 'password' | 'refreshTokenHash' | 'deletedAt'>;
 }
+
+export interface RegisterSuccessResponse {
+  status: 'success';
+  message: string;
+}
+
+export interface RegisterDegradedResponse {
+  status: 'pending';
+  message: string;
+  httpStatus: typeof HttpStatus.ACCEPTED;
+}
+
+const OTP_TTL_MS = 5 * 60 * 1000;
 
 export interface GoogleAuthResponse extends AuthTokens {
   user: Omit<User, 'password' | 'refreshTokenHash' | 'deletedAt'>;
@@ -307,6 +321,10 @@ export class AuthService {
   ): Promise<void> {
     const hash = await bcrypt.hash(refreshToken, 10);
     await this.usersService.setRefreshTokenHash(userId, hash);
+  }
+
+  private generateOtp(): string {
+    return crypto.randomInt(100_000, 1_000_000).toString();
   }
 
   async validateGoogleUser(

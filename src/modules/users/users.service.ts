@@ -7,7 +7,7 @@ import {
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { v7 as uuidv7 } from 'uuid';
-import { AuthProvider, UserRole } from './entities/user.entity';
+import { UserRole } from './entities/user.entity';
 import { UserModelAction } from './actions/user.action';
 import { ResetPasswordModelAction } from './actions/reset-password.action';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -204,11 +204,7 @@ export class UsersService {
     });
   }
 
-  logOAuthLogin(
-    userId: string,
-    ipAddress: string,
-    provider: string,
-  ): void {
+  logOAuthLogin(userId: string, ipAddress: string, provider: string): void {
     const timestamp = new Date().toISOString();
     console.log(
       `OAuth Login - Provider: ${provider}, User: ${userId}, IP: ${ipAddress}, Timestamp: ${timestamp}`,
