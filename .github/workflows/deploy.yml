@@ -2,22 +2,31 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [feat/cicd-setup, dev, staging, main]
+    branches:
+      - feat/cicd-setup
+      - dev
+      - staging
+      - main
+
   pull_request:
-    branches: [feat/cicd-setup, dev, staging, main]
+    branches:
+      - feat/cicd-setup
+      - dev
+      - staging
+      - main
 
 jobs:
   ci:
-    name: CI — Build, Lint & Test
+    name: CI — Lint, Test & Build
     runs-on: ubuntu-latest
 
     services:
       postgres:
         image: postgres:15
         env:
-          POSTGRES_USER: ${{ secrets.TEST_DB_USER }}
-          POSTGRES_PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
-          POSTGRES_DB: ${{ secrets.TEST_DB_NAME }}
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_db
         ports:
           - 5432:5432
         options: >-
@@ -26,26 +35,33 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+
     env:
       NODE_ENV: test
+
       DATABASE_HOST: localhost
       DATABASE_PORT: 5432
-      DATABASE_USER: ${{ secrets.TEST_DB_USER }}
-      DATABASE_PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
-      DATABASE_NAME: ${{ secrets.TEST_DB_NAME }}
-      DATABASE_SYNC: false
-      DATABASE_SSL: false
-      JWT_ACCESS_SECRET: ${{ secrets.JWT_ACCESS_SECRET }}
-      JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+      DATABASE_USER: test_user
+      DATABASE_PASSWORD: test_password
+      DATABASE_NAME: test_db
+
       REDIS_URL: redis://localhost:6379
-      APP_URL: http://localhost:3000/
-      MAIL_HOST: ${{ secrets.MAIL_HOST }}
-      MAIL_PORT: ${{ secrets.MAIL_PORT }}
-      MAIL_USER: ${{ secrets.MAIL_USER }}
-      MAIL_PASS: ${{ secrets.MAIL_PASS }}
-      MAIL_FROM: ${{ secrets.MAIL_FROM }}
-      MAIL_SECURE: ${{ secrets.MAIL_SECURE }}
-      SWAGGER_ENABLED: false
+
+      JWT_ACCESS_SECRET: ci-only-access-secret-minimum-32-chars
+      JWT_REFRESH_SECRET: ci-only-refresh-secret-minimum-32-chars
+
+      APP_URL: http://localhost:3000
+
+      MAIL_HOST: smtp.gmail.com
+      MAIL_PORT: 465
+      MAIL_USER: test@test.com
+      MAIL_PASS: test-password
+      MAIL_FROM: test@test.com
+      MAIL_SECURE: true
 
     steps:
       - name: Checkout code
@@ -54,20 +70,23 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: 20
+          cache: npm
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint
+      - name: Run lint
         run: npm run lint
 
-      - name: Build
-        run: npm run build
+      - name: Run migrations
+        run: npm run migration:run
 
-      - name: Run unit tests
-        run: npm run test
+      - name: Run tests
+        run: npm test
+
+      - name: Build application
+        run: npm run build
 
   deploy-dev:
     name: Deploy — Dev
@@ -77,9 +96,6 @@ jobs:
     environment: dev
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
       - name: Deploy to dev server
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -87,12 +103,20 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
+            set -e
+
             cd /var/www/openprofile-be
+
             git pull origin dev
-            npm ci --production
+
+            npm ci
+
             npm run build
+
             npm run migration:run
+
             pm2 restart openprofile-dev-be || pm2 start dist/main.js --name openprofile-dev-be
+
             pm2 save
 
   deploy-staging:
@@ -103,9 +127,6 @@ jobs:
     environment: staging
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
       - name: Deploy to staging server
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -113,12 +134,20 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
+            set -e
+
             cd /var/www/openprofile-be
+
             git pull origin staging
-            npm ci --production
+
+            npm ci
+
             npm run build
+
             npm run migration:run
+
             pm2 restart openprofile-staging-be || pm2 start dist/main.js --name openprofile-staging-be
+
             pm2 save
 
   deploy-production:
@@ -129,9 +158,6 @@ jobs:
     environment: production
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
       - name: Deploy to production server
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -139,10 +165,18 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
+            set -e
+
             cd /var/www/openprofile-be
+
             git pull origin main
-            npm ci --production
+
+            npm ci
+
             npm run build
+
             npm run migration:run
+
             pm2 restart openprofile-prod-be || pm2 start dist/main.js --name openprofile-prod-be
+
             pm2 save
