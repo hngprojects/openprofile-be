@@ -9,6 +9,8 @@ export const QUEUE_JOB_NAMES = {
     SEND_PASSWORD_RESET: 'send-password-reset',
     VERIFY_EMAIL: 'verify-email',
     WAITLIST: 'waitlist',
+    ACCOUNT_LOCKED: 'account-locked',
+    NEW_IP_LOGIN: 'new-ip-login',
   },
 } as const;
 

@@ -3,6 +3,7 @@ import { NestFactory, Reflector } from '@nestjs/core';
 import { ClassSerializerInterceptor } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import compression from 'compression';
+import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { env } from './config/env';
@@ -14,8 +15,10 @@ async function bootstrap() {
 
   app.use(helmet());
   app.use(compression());
+  app.use(cookieParser());
   app.enableCors({
-    origin: env.CORS_ORIGIN === '*' ? true : (env.CORS_ORIGIN as string).split(','),
+    origin:
+      env.CORS_ORIGIN === '*' ? true : (env.CORS_ORIGIN as string).split(','),
     credentials: true,
   });
   app.setGlobalPrefix('api', { exclude: ['health'] });

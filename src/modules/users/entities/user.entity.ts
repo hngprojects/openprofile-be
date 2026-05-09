@@ -15,6 +15,11 @@ export enum UserRole {
   USER = 'user',
 }
 
+export enum AuthProvider {
+  LOCAL = 'local',
+  GOOGLE = 'google',
+}
+
 @Entity('users')
 export class User {
   @ApiProperty({ format: 'uuid' })
@@ -37,6 +42,22 @@ export class User {
   @ApiProperty({ enum: UserRole, default: UserRole.USER })
   @Column({ type: 'enum', enum: UserRole, default: UserRole.USER })
   role: UserRole;
+
+  @ApiProperty({ default: false })
+  @Column({ type: 'boolean', default: false, name: 'is_verified' })
+  isVerified: boolean;
+
+  @ApiProperty({ default: false })
+  @Column({ type: 'boolean', default: false, name: 'onboarding_complete' })
+  onboardingComplete: boolean;
+
+  @ApiProperty({ enum: AuthProvider, default: AuthProvider.LOCAL })
+  @Column({ type: 'varchar', length: 32, default: AuthProvider.LOCAL })
+  provider: AuthProvider;
+
+  @Exclude()
+  @Column({ type: 'varchar', length: 45, nullable: true, name: 'last_login_ip' })
+  lastLoginIp: string | null;
 
   @Exclude()
   @Column({

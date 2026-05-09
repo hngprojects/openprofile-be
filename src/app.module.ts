@@ -1,10 +1,11 @@
-import { Module, ValidationPipe } from '@nestjs/common';
+import { Module, UnprocessableEntityException, ValidationPipe } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { RedisModule } from './common/redis/redis.module';
 import { appConfig } from './config/app.config';
 import { databaseConfig } from './config/database.config';
 import './config/env';
@@ -13,7 +14,6 @@ import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { HealthModule } from './modules/health/health.module';
 import { WaitlistModule } from './modules/waitlist/waitlist.module';
-
 import { UsersModule } from './modules/users/users.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { MailModule } from './modules/mail/mail.module';
@@ -27,12 +27,12 @@ import { MailModule } from './modules/mail/mail.module';
     TypeOrmModule.forRootAsync({
       useFactory: (): TypeOrmModuleOptions => databaseConfig(),
     }),
+    RedisModule,
     QueueModule,
     WaitlistModule,
     HealthModule,
     UsersModule,
     AuthModule,
-    QueueModule,
     MailModule,
   ],
   providers: [
@@ -43,6 +43,10 @@ import { MailModule } from './modules/mail/mail.module';
         transform: true,
         forbidNonWhitelisted: true,
         transformOptions: { enableImplicitConversion: false },
+        exceptionFactory: (errors) =>
+          new UnprocessableEntityException(
+            errors.flatMap((e) => Object.values(e.constraints ?? {})),
+          ),
       }),
     },
     { provide: APP_GUARD, useClass: JwtAuthGuard },

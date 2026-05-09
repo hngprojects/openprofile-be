@@ -4,7 +4,7 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
+import * as argon2 from 'argon2';
 import { v7 as uuidv7 } from 'uuid';
 import { UserModelAction } from './actions/user.action';
 import { ResetPasswordModelAction } from './actions/reset-password.action';
@@ -14,7 +14,6 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
 import { ResetPassword } from '../auth/entities/reset-password.entity';
 
-const BCRYPT_ROUNDS = 10;
 const NO_TRANSACTION = {
   transactionOptions: { useTransaction: false as const },
 };
@@ -32,7 +31,7 @@ export class UsersService {
       throw new ConflictException('Email already in use');
     }
 
-    const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
+    const passwordHash = await argon2.hash(dto.password);
     return this.userModelAction.create({
       ...NO_TRANSACTION,
       createPayload: {
@@ -68,7 +67,7 @@ export class UsersService {
 
     const payload: Partial<User> = { ...dto };
     if (dto.password) {
-      payload.password = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
+      payload.password = await argon2.hash(dto.password);
     }
 
     const updated = await this.userModelAction.update({
@@ -135,11 +134,19 @@ export class UsersService {
   }
 
   async updatePassword(id: string, newPassword: string): Promise<void> {
-    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    const passwordHash = await argon2.hash(newPassword);
     await this.userModelAction.update({
       ...NO_TRANSACTION,
       identifierOptions: { id },
       updatePayload: { password: passwordHash },
+    });
+  }
+
+  async updateLastLoginIp(id: string, ip: string): Promise<void> {
+    await this.userModelAction.update({
+      ...NO_TRANSACTION,
+      identifierOptions: { id },
+      updatePayload: { lastLoginIp: ip },
     });
   }
 }

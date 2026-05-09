@@ -23,25 +23,26 @@ export class TransformInterceptor<T> implements NestInterceptor<
   ): Observable<ApiResponse<T>> {
     return next.handle().pipe(
       map((payload) => {
-        if (
-          payload &&
-          typeof payload === 'object' &&
-          'paginationMeta' in (payload as object)
-        ) {
-          const {
-            paginationMeta,
-            payload: data,
-            ...rest
-          } = payload as unknown as {
-            paginationMeta: Record<string, unknown>;
-            payload: T;
-            [key: string]: unknown;
-          };
-          return {
-            success: true,
-            data: data,
-            meta: { ...rest, ...paginationMeta },
-          };
+        if (payload && typeof payload === 'object') {
+          if ('status' in (payload as object)) {
+            return payload as unknown as ApiResponse<T>;
+          }
+          if ('paginationMeta' in (payload as object)) {
+            const {
+              paginationMeta,
+              payload: data,
+              ...rest
+            } = payload as unknown as {
+              paginationMeta: Record<string, unknown>;
+              payload: T;
+              [key: string]: unknown;
+            };
+            return {
+              success: true,
+              data: data,
+              meta: { ...rest, ...paginationMeta },
+            };
+          }
         }
         return { success: true, data: payload };
       }),
