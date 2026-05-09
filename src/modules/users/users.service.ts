@@ -102,6 +102,7 @@ export class UsersService {
 
   async setPasswordResetToken(
     id: string,
+    tokenSelector: string,
     tokenHash: string,
     expires: Date,
   ): Promise<ResetPassword> {
@@ -110,6 +111,7 @@ export class UsersService {
       createPayload: {
         id: uuidv7(),
         userId: id,
+        tokenSelector,
         tokenHash,
         expiresAt: expires,
         used: false,
@@ -118,10 +120,10 @@ export class UsersService {
   }
 
   async findByValidResetToken(
-    tokenHash: string,
+    tokenSelector: string,
   ): Promise<{ user: User; resetPassword: ResetPassword } | null> {
     const resetPassword =
-      await this.resetPasswordAction.findByValidToken(tokenHash);
+      await this.resetPasswordAction.findByValidSelector(tokenSelector);
     if (!resetPassword) return null;
 
     const user = await this.findOne(resetPassword.userId);
@@ -137,7 +139,7 @@ export class UsersService {
   }
 
   async updatePassword(id: string, newPassword: string): Promise<void> {
-    const passwordHash = await argon2.hash(newPassword);
+        const passwordHash = await argon2.hash(newPassword);
     await this.userModelAction.update({
       ...NO_TRANSACTION,
       identifierOptions: { id },
@@ -151,6 +153,12 @@ export class UsersService {
       identifierOptions: { id },
       updatePayload: { lastLoginIp: ip },
     });
+  }
+
+  async findResetTokenBySelector(
+    tokenSelector: string,
+  ): Promise<ResetPassword | null> {
+    return this.resetPasswordAction.findBySelector(tokenSelector);
   }
 
   async createEmailUser(dto: {

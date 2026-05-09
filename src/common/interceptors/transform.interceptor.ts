@@ -24,7 +24,8 @@ export class TransformInterceptor<T> implements NestInterceptor<
     return next.handle().pipe(
       map((payload) => {
         if (payload && typeof payload === 'object') {
-          if ('status' in (payload as object)) {
+          const status = (payload as Record<string, unknown>).status;
+          if (status === 'success' || status === 'pending' || status === 'error') {
             return payload as unknown as ApiResponse<T>;
           }
           if ('paginationMeta' in (payload as object)) {

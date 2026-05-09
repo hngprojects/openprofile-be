@@ -7,6 +7,7 @@ import {
   QUEUE_JOB_NAMES,
 } from '../queue/config/queue-names.constant';
 import { resetPasswordEmailTemplate } from './reset-email.template';
+import { PasswordChangedEmailData } from './interfaces/password-changed-email.interface';
 import { ResetPasswordEmailData } from './interfaces/reset-password-email.interface';
 import { AccountLockedEmailData } from './interfaces/account-locked-email.interface';
 import { NewIpLoginEmailData } from './interfaces/new-ip-login-email.interface';
@@ -19,15 +20,17 @@ export class MailProcessor extends WorkerHost {
     super();
   }
 
-  async process(
-    job: Job<
-      ResetPasswordEmailData | AccountLockedEmailData | NewIpLoginEmailData
-    >,
-  ): Promise<void> {
+  async process(job: Job): Promise<void> {
     switch (job.name) {
       case QUEUE_JOB_NAMES.EMAIL.SEND_PASSWORD_RESET:
         await this.handleSendPasswordResetEmail(
           job.data as ResetPasswordEmailData,
+        );
+        break;
+
+      case QUEUE_JOB_NAMES.EMAIL.SEND_PASSWORD_CHANGED:
+        await this.handleSendPasswordChangedEmail(
+          job.data as PasswordChangedEmailData,
         );
         break;
 
@@ -47,9 +50,18 @@ export class MailProcessor extends WorkerHost {
 
   private async handleSendPasswordResetEmail(data: ResetPasswordEmailData) {
     const { to, resetLink } = data;
-    const subject = 'Password Reset Request';
+    const subject = 'Reset your Open Profile password';
     const html = resetPasswordEmailTemplate({ resetUrl: resetLink });
     await this.mailService.sendEmail(to, subject, html);
+  }
+
+  private async handleSendPasswordChangedEmail(data: PasswordChangedEmailData) {
+    const subject = 'Your Open Profile password has been changed';
+    const html = `
+      <p>Your password has been successfully changed.</p>
+      <p>If you did not make this change, please contact support immediately.</p>
+    `;
+    await this.mailService.sendEmail(data.to, subject, html);
   }
 
   private async handleAccountLockedEmail(data: AccountLockedEmailData) {

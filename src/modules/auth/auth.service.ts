@@ -14,6 +14,7 @@ import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
 import type { StringValue } from 'ms';
 import { env } from '../../config/env';
+import { RateLimiterService } from '../rate-limiter/rate-limiter.service';
 import { AuthProvider, User, UserRole } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
@@ -30,10 +31,15 @@ import {
   QUEUE_JOB_NAMES,
   QUEUE_NAMES,
 } from '../queue/config/queue-names.constant';
+import { PasswordChangedEmailData } from '../mail/interfaces/password-changed-email.interface';
 import { ResetPasswordEmailData } from '../mail/interfaces/reset-password-email.interface';
 import { AccountLockedEmailData } from '../mail/interfaces/account-locked-email.interface';
 import { NewIpLoginEmailData } from '../mail/interfaces/new-ip-login-email.interface';
 import { GoogleUser } from './interfaces/google.interface';
+const BCRYPT_ROUNDS = 10;
+
+const FORGOT_PASSWORD_GENERIC_MSG =
+  'If an account exists for this email, a reset link has been sent.';
 
 export interface AuthTokens {
   accessToken: string;
@@ -75,6 +81,7 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly queueService: QueueService,
+    private readonly rateLimiterService: RateLimiterService,
     private readonly mailService: MailService,
     private readonly redisService: RedisService,
   ) {}
@@ -297,25 +304,42 @@ export class AuthService {
 
   async forgotPassword(
     dto: ForgotPasswordDto,
-  ): Promise<Record<string, string> | undefined> {
+  ): Promise<Record<string, string>> {
+    const rateLimitKey = `forgot-password:${dto.email}`;
+    const allowed = await this.rateLimiterService.isAllowed(
+      rateLimitKey,
+      3,
+      3600,
+    );
+
+    if (!allowed) {
+      throw new HttpException(
+        'You have requested too many reset links. Please wait 60 minutes before trying again.',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
     const user = await this.usersService.findByEmail(dto.email);
-    if (user) {
+
+    if (user && user.password) {
       const rawToken = crypto.randomBytes(32).toString('hex');
-      const tokenHash = crypto
+      const tokenSelector = crypto
         .createHash('sha256')
         .update(rawToken)
         .digest('hex');
-      const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+      const tokenHash = await argon2.hash(rawToken);
+      const expires = new Date(Date.now() + 60 * 60 * 1000);
 
       await this.usersService.setPasswordResetToken(
         user.id,
+        tokenSelector,
         tokenHash,
         expires,
       );
 
       const payload: ResetPasswordEmailData = {
         to: user.email,
-        resetLink: env.APP_URL + '/reset-password?token=' + rawToken,
+        resetLink: `${env.FRONTEND_URL}/reset-password?token=${rawToken}`,
       };
 
       await this.queueService.addJob<ResetPasswordEmailData>(
@@ -325,26 +349,76 @@ export class AuthService {
       );
     }
 
-    return {
-      message: 'A password reset link has been sent to the provided email',
-    };
+    return { status: 'success', message: FORGOT_PASSWORD_GENERIC_MSG };
   }
 
-  async resetPassword(dto: ResetPasswordDto): Promise<void> {
-    const tokenHash = crypto
+  async resetPassword(dto: ResetPasswordDto): Promise<Record<string, string>> {
+    const tokenSelector = crypto
       .createHash('sha256')
       .update(dto.token)
       .digest('hex');
-    const result = await this.usersService.findByValidResetToken(tokenHash);
+    const resetRecord =
+      await this.usersService.findResetTokenBySelector(tokenSelector);
 
-    if (!result) {
-      throw new BadRequestException('Invalid or expired reset token');
+    if (!resetRecord) {
+      throw new HttpException(
+        {
+          errorCode: 'TOKEN_INVALID',
+          message: 'This reset link is invalid. Please request a new one.',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
-    const { user, resetPassword } = result;
-    await this.usersService.updatePassword(user.id, dto.password);
-    await this.usersService.markPasswordResetAsUsed(resetPassword.id);
-    await this.usersService.clearPasswordResetToken(user.id);
+    const isValid = await argon2.verify(resetRecord.tokenHash, dto.token);
+    if (!isValid) {
+      throw new HttpException(
+        {
+          errorCode: 'TOKEN_INVALID',
+          message: 'This reset link is invalid. Please request a new one.',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    if (new Date() > resetRecord.expiresAt) {
+      throw new HttpException(
+        {
+          errorCode: 'TOKEN_EXPIRED',
+          message:
+            'This reset link has expired. Please request a new password reset link.',
+        },
+        HttpStatus.GONE,
+      );
+    }
+
+    if (resetRecord.used) {
+      throw new HttpException(
+        {
+          errorCode: 'TOKEN_USED',
+          message:
+            'This reset link has already been used. Please request a new one.',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const user = await this.usersService.findOne(resetRecord.userId);
+    await this.usersService.updatePassword(user.id, dto.newPassword);
+    await this.usersService.markPasswordResetAsUsed(resetRecord.id);
+    await this.usersService.setRefreshTokenHash(user.id, null);
+
+    await this.queueService.addJob<PasswordChangedEmailData>(
+      QUEUE_NAMES.EMAIL,
+      QUEUE_JOB_NAMES.EMAIL.SEND_PASSWORD_CHANGED,
+      { to: user.email },
+    );
+
+    return {
+      status: 'success',
+      message:
+        'Your password has been updated. Please log in with your new password.',
+    };
   }
 
   async verifyOtp(
