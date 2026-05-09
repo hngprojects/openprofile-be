@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: ['dev']
+    branches: [dev, staging, main]
   pull_request:
-    branches: ['dev']
+    branches: [dev, staging, main]
 
 jobs:
   build-and-test:
@@ -35,7 +35,6 @@ jobs:
       JWT_REFRESH_SECRET: ci-only-not-a-real-secret-refresh-key-min-32-chars
       REDIS_URL: redis://localhost:6379
       APP_URL: http://localhost:3000/
-
       MAIL_HOST: smtp.gmail.com
       MAIL_PORT: 465
       MAIL_USER: test@test.com

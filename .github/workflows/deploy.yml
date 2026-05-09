@@ -2,13 +2,13 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [dev, staging, main]
+    branches: [feat/cicd-setup, dev, staging, main]
   pull_request:
-    branches: [dev, staging, main]
+    branches: [feat/cicd-setup, dev, staging, main]
 
 jobs:
   ci:
-    name: CI — Build & Lint
+    name: CI — Build, Lint & Test
     runs-on: ubuntu-latest
 
     steps:
@@ -30,6 +30,35 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Run unit tests
+        run: npm run test
+
+  deploy-dev:
+    name: Deploy — Dev
+    needs: ci
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/dev' && github.event_name == 'push'
+    environment: dev
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to dev server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          script: |
+            cd /var/www/openprofile-be
+            git pull origin dev
+            npm ci --production
+            npm run build
+            npm run migration:run
+            pm2 restart openprofile-dev-be || pm2 start dist/main.js --name openprofile-dev-be
+            pm2 save
+
   deploy-staging:
     name: Deploy — Staging
     needs: ci
@@ -46,13 +75,14 @@ jobs:
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
+          password: ${{ secrets.SERVER_PASSWORD }}
           script: |
             cd /var/www/openprofile-be
             git pull origin staging
             npm ci --production
+            npm run build
             npm run migration:run
-            pm2 restart openprofile-staging || pm2 start dist/main.js --name openprofile-staging
+            pm2 restart openprofile-staging-be || pm2 start dist/main.js --name openprofile-staging-be
             pm2 save
 
   deploy-production:
@@ -71,12 +101,12 @@ jobs:
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
+          password: ${{ secrets.SERVER_PASSWORD }}
           script: |
             cd /var/www/openprofile-be
             git pull origin main
             npm ci --production
             npm run build
             npm run migration:run
-            pm2 restart openprofile-prod || pm2 start dist/main.js --name openprofile-prod
+            pm2 restart openprofile-prod-be || pm2 start dist/main.js --name openprofile-prod-be
             pm2 save
