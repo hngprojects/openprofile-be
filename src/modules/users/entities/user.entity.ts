@@ -19,7 +19,6 @@ export enum AuthProvider {
   GOOGLE = 'google',
 }
 
-
 @Entity('users')
 export class User {
   @ApiProperty({ format: 'uuid' })
@@ -42,7 +41,7 @@ export class User {
   @ApiProperty({ enum: UserRole, nullable: true, default: null })
   @Column({ type: 'enum', enum: UserRole, nullable: true, default: null })
   role: UserRole | null;
- 
+
   @ApiProperty({ enum: AuthProvider, default: AuthProvider.EMAIL })
   @Column({
     type: 'varchar',
@@ -55,15 +54,15 @@ export class User {
   @ApiProperty({ default: false })
   @Column({ type: 'boolean', name: 'is_verified', default: false })
   isVerified: boolean;
-  
+
   @ApiProperty({ default: false })
   @Column({ type: 'boolean', name: 'onboarding_complete', default: false })
   onboardingComplete: boolean;
- 
+
   @Exclude()
   @Column({ type: 'varchar', length: 255, name: 'otp_hash', nullable: true })
   otpHash: string | null;
- 
+
   @Exclude()
   @Column({
     type: 'timestamp with time zone',

@@ -5,7 +5,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import { v7 as uuidv7 } from 'uuid';
+import { AuthProvider, UserRole } from './entities/user.entity';
 import { UserModelAction } from './actions/user.action';
 import { ResetPasswordModelAction } from './actions/reset-password.action';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -164,6 +166,53 @@ export class UsersService {
         used: false,
       },
     });
+  }
+
+  async linkGoogleAccount(id: string): Promise<User> {
+    const updated = await this.userModelAction.update({
+      ...NO_TRANSACTION,
+      identifierOptions: { id },
+      updatePayload: { authProvider: AuthProvider.GOOGLE },
+    });
+
+    if (!updated) {
+      throw new InternalServerErrorException('Failed to link Google account');
+    }
+
+    return updated;
+  }
+
+  async createGoogleUser(googleUser: {
+    email: string;
+    fullName: string;
+    isVerified?: boolean;
+    onboardingComplete?: boolean;
+  }): Promise<User> {
+    const randomPassword = crypto.randomBytes(16).toString('hex');
+    const passwordHash = await bcrypt.hash(randomPassword, BCRYPT_ROUNDS);
+    return this.userModelAction.create({
+      ...NO_TRANSACTION,
+      createPayload: {
+        email: googleUser.email,
+        password: passwordHash,
+        fullName: googleUser.fullName,
+        role: UserRole.USER,
+        isVerified: googleUser.isVerified ?? false,
+        onboardingComplete: googleUser.onboardingComplete ?? false,
+        authProvider: AuthProvider.GOOGLE,
+      },
+    });
+  }
+
+  logOAuthLogin(
+    userId: string,
+    ipAddress: string,
+    provider: string,
+  ): void {
+    const timestamp = new Date().toISOString();
+    console.log(
+      `OAuth Login - Provider: ${provider}, User: ${userId}, IP: ${ipAddress}, Timestamp: ${timestamp}`,
+    );
   }
 
   async findByValidResetToken(

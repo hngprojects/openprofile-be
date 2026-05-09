@@ -21,6 +21,7 @@ import { WaitlistModule } from './modules/waitlist/waitlist.module';
 import { UsersModule } from './modules/users/users.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { MailModule } from './modules/mail/mail.module';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
   imports: [
@@ -28,6 +29,12 @@ import { MailModule } from './modules/mail/mail.module';
       isGlobal: true,
       load: [appConfig, databaseConfig, jwtConfig],
     }),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60_000,
+        limit: 100,
+      },
+    ]),
     TypeOrmModule.forRootAsync({
       useFactory: (): TypeOrmModuleOptions => databaseConfig(),
     }),

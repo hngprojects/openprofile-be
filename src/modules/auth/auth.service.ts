@@ -28,9 +28,8 @@ import {
   QUEUE_NAMES,
 } from '../queue/config/queue-names.constant';
 import { ResetPasswordEmailData } from '../mail/interfaces/reset-password-email.interface';
-import type { Response } from 'express';
-
-const BCRYPT_ROUNDS = 10;
+import { GoogleUser } from './interfaces/google.interface';
+import { AuthProvider } from '../users/entities/user.entity';
 
 export interface AuthTokens {
   accessToken: string;
@@ -41,18 +40,10 @@ export interface AuthResponse extends AuthTokens {
   user: Omit<User, 'password' | 'refreshTokenHash' | 'deletedAt'>;
 }
 
-export interface RegisterSuccessResponse {
-  status: 'success';
-  message: string;
+export interface GoogleAuthResponse extends AuthTokens {
+  user: Omit<User, 'password' | 'refreshTokenHash' | 'deletedAt'>;
+  isNewUser: boolean;
 }
-
-export interface RegisterDegradedResponse {
-  status: 'pending';
-  message: string;
-  httpStatus: typeof HttpStatus.ACCEPTED;
-}
-
-const OTP_TTL_MS = 5 * 60 * 1000;
 
 @Injectable()
 export class AuthService {
@@ -318,7 +309,80 @@ export class AuthService {
     await this.usersService.setRefreshTokenHash(userId, hash);
   }
 
-  private generateOtp(): string {
-    return randomInt(100_000, 1_000_000).toString();
+  async validateGoogleUser(
+    googleUser: GoogleUser,
+  ): Promise<{ user: User; isNewUser: boolean }> {
+    let user = await this.usersService.findByEmail(googleUser.email);
+    let isNewUser = false;
+
+    if (user) {
+      /**
+       * Link google account if not already linked (email account exists)
+       */
+      if (user.authProvider === AuthProvider.EMAIL) {
+        await this.usersService.linkGoogleAccount(user.id);
+        user = await this.usersService.findOne(user.id);
+      }
+
+      return { user, isNewUser };
+    }
+
+    /**
+     * If user does not exist, create a new Google user with is_verified = true and onboardingComplete = false
+     */
+    const created = await this.usersService.createGoogleUser({
+      email: googleUser.email,
+      fullName: googleUser.fullName,
+      isVerified: true,
+      onboardingComplete: false,
+    });
+
+    isNewUser = true;
+    return { user: created, isNewUser };
+  }
+
+  async loginGoogle(
+    user: User,
+    ipAddress: string,
+  ): Promise<GoogleAuthResponse> {
+    /**
+     * Log the OAuth login with timestamp, IP, and user ID
+     */
+    this.usersService.logOAuthLogin(user.id, ipAddress, 'google');
+
+    /**
+     * Generate tokens with full payload: sub, email, role, onboardingComplete
+     */
+    const tokens = await this.signGoogleTokens(user);
+    await this.persistRefreshToken(user.id, tokens.refreshToken);
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password, refreshTokenHash, deletedAt, ...safeUser } = user;
+
+    return {
+      ...tokens,
+      user: safeUser,
+      isNewUser: !user.onboardingComplete,
+    };
+  }
+
+  private async signGoogleTokens(user: User): Promise<AuthTokens> {
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      onboardingComplete: user.onboardingComplete,
+    };
+    const [accessToken, refreshToken] = await Promise.all([
+      this.jwtService.signAsync(payload, {
+        secret: env.JWT_ACCESS_SECRET,
+        expiresIn: env.JWT_ACCESS_EXPIRES_IN as StringValue,
+      }),
+      this.jwtService.signAsync(payload, {
+        secret: env.JWT_REFRESH_SECRET,
+        expiresIn: env.JWT_REFRESH_EXPIRES_IN as StringValue,
+      }),
+    ]);
+    return { accessToken, refreshToken };
   }
 }
