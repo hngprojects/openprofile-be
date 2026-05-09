@@ -47,6 +47,18 @@ export class User {
   })
   refreshTokenHash: string | null;
 
+  @ApiProperty({ default: false })
+  @Column({ type: 'boolean', default: false, name: 'is_verified' })
+  isVerified: boolean;
+
+  @Exclude()
+  @Column({ type: 'varchar', length: 255, nullable: true, name: 'otp_hash' })
+  otpHash: string | null;
+
+  @Exclude()
+  @Column({ type: 'timestamp', nullable: true, name: 'otp_expires_at' })
+  otpExpiresAt: Date | null;
+
   @ApiProperty()
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

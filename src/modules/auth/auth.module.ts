@@ -10,6 +10,8 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { QueueModule } from '../queue/queue.module';
 import { StringValue } from 'ms';
 
+import { redisProvider } from './redis.provider';
+
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
@@ -22,7 +24,7 @@ import { StringValue } from 'ms';
     QueueModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
-  exports: [AuthService],
+  providers: [AuthService, JwtStrategy, redisProvider],
+  exports: [AuthService, redisProvider],
 })
 export class AuthModule {}

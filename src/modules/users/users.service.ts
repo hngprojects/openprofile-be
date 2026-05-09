@@ -142,4 +142,16 @@ export class UsersService {
       updatePayload: { password: passwordHash },
     });
   }
+
+  async updateOtp(
+    id: string,
+    otpHash: string | null,
+    otpExpiresAt: Date | null,
+  ): Promise<void> {
+    await this.userModelAction.update({
+      ...NO_TRANSACTION,
+      identifierOptions: { id },
+      updatePayload: { otpHash, otpExpiresAt },
+    });
+  }
 }

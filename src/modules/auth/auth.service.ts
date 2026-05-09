@@ -21,6 +21,14 @@ import {
   QUEUE_NAMES,
 } from '../queue/config/queue-names.constant';
 import { ResetPasswordEmailData } from '../mail/interfaces/reset-password-email.interface';
+import { ResendOtpDto } from './dto/resend-otp.dto';
+import { MailService } from '../mail/mail.service';
+import { otpEmailTemplate } from '../mail/otp-email.template';
+import { Inject } from '@nestjs/common';
+import { REDIS_CLIENT } from './redis.provider';
+import Redis from 'ioredis';
+import * as argon2 from 'argon2';
+import { HttpException, HttpStatus } from '@nestjs/common';
 
 export interface AuthTokens {
   accessToken: string;
@@ -37,6 +45,8 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly queueService: QueueService,
+    private readonly mailService: MailService,
+    @Inject(REDIS_CLIENT) private readonly redisClient: Redis,
   ) {}
 
   async register(dto: RegisterDto): Promise<AuthResponse> {
@@ -139,6 +149,55 @@ export class AuthService {
     await this.usersService.updatePassword(user.id, dto.password);
     await this.usersService.markPasswordResetAsUsed(resetPassword.id);
     await this.usersService.clearPasswordResetToken(user.id);
+  }
+
+  async resendOtp(dto: ResendOtpDto): Promise<{ status: string; message: string }> {
+    const user = await this.usersService.findByEmail(dto.email);
+    if (!user) {
+      return { status: 'success', message: 'A new verification code has been sent to your email address.' };
+    }
+
+    if (user.isVerified) {
+      throw new HttpException('This account is already verified. Please log in.', HttpStatus.CONFLICT);
+    }
+
+    const rateLimitKey = `rate_limit:resend_otp:${dto.email}`;
+    const requestsCount = await this.redisClient.incr(rateLimitKey);
+    
+    if (requestsCount === 1) {
+      await this.redisClient.expire(rateLimitKey, 3600); // 60 minutes
+    }
+
+    if (requestsCount > 3) {
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.TOO_MANY_REQUESTS,
+          error: 'RESEND_LIMIT_EXCEEDED',
+          message: 'You have requested too many codes. Please wait 60 minutes before trying again.',
+        },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    // Invalidate previous OTP and generate new
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpHash = await argon2.hash(otp);
+    const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+    await this.usersService.updateOtp(user.id, otpHash, otpExpiresAt);
+
+    const subject = 'Your new Open Profile verification code';
+    const html = otpEmailTemplate({ otp });
+
+    try {
+      await this.mailService.sendEmail(user.email, subject, html);
+    } catch {
+      // Revert the rate limit count
+      await this.redisClient.decr(rateLimitKey);
+      throw new HttpException('We had trouble sending your code. Please try again in a moment', HttpStatus.ACCEPTED);
+    }
+
+    return { status: 'success', message: 'A new verification code has been sent to your email address.' };
   }
 
   private async issueTokens(user: User): Promise<AuthResponse> {
