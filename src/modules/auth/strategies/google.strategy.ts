@@ -23,9 +23,9 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     profile: Profile,
     done: VerifyCallback,
   ): Promise<any> {
-    const email = profile.emails?.[0]?.value;
-    const givenName = profile.name?.givenName;
-    const familyName = profile.name?.familyName;
+    const email = profile.emails?.[0]?.value as string;
+    const givenName = profile.name?.givenName as string;
+    const familyName = profile.name?.familyName as string;
 
     if (!email) {
       throw new UnauthorizedException('Google account email not found');
