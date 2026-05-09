@@ -3,6 +3,9 @@ import { Inject } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { mailConfig } from './config/mail.config';
+import { renderVerificationOtpEmail } from './verifcation-otp.template';
+
+export const OTP_EMAIL_SUBJECT = 'Verify your Open Profile account';
 
 @Injectable()
 export class MailService {
@@ -33,5 +36,21 @@ export class MailService {
     });
 
     this.logger.log(`Email sent to ${to} with subject "${subject}"`);
+  }
+
+  async sendVerificationOtp(
+    toEmail: string,
+    fullName: string,
+    otp: string,
+  ): Promise<void> {
+    this.logger.log(`Sending OTP email to ${toEmail}`);
+ 
+    await this.transporter.sendMail({
+      to: toEmail,
+      subject: OTP_EMAIL_SUBJECT,
+      html: renderVerificationOtpEmail(fullName, otp),
+    });
+ 
+    this.logger.log(`OTP email delivered to ${toEmail}`);
   }
 }
