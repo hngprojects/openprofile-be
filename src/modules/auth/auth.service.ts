@@ -1,5 +1,7 @@
 import {
   BadRequestException,
+  ConflictException,
+  GoneException,
   HttpStatus,
   Injectable,
   UnauthorizedException,
@@ -7,7 +9,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { randomInt } from 'crypto';
-import * as crypto from 'çrypto';
+import * as crypto from 'crypto';
 import type { StringValue } from 'ms';
 import { env } from '../../config/env';
 import { User } from '../users/entities/user.entity';
@@ -16,6 +18,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { JwtPayload } from './strategies/jwt.strategy';
 import { QueueService } from '../queue/queue.service';
 import { MailService } from '../mail/mail.service';
@@ -25,10 +28,9 @@ import {
   QUEUE_NAMES,
 } from '../queue/config/queue-names.constant';
 import { ResetPasswordEmailData } from '../mail/interfaces/reset-password-email.interface';
-
+import type { Response } from 'express';
 
 const BCRYPT_ROUNDS = 10;
-
 
 export interface AuthTokens {
   accessToken: string;
@@ -55,7 +57,7 @@ const OTP_TTL_MS = 5 * 60 * 1000;
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
-  
+
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
@@ -67,17 +69,17 @@ export class AuthService {
     dto: RegisterDto,
   ): Promise<RegisterSuccessResponse | RegisterDegradedResponse> {
     const user = await this.usersService.createEmailUser({
-      email: dto.email, 
+      email: dto.email,
       password: dto.password,
       fullName: dto.fullName,
     });
- 
+
     const otp = this.generateOtp();
     const otpHash = await bcrypt.hash(otp, BCRYPT_ROUNDS);
     const otpExpiresAt = new Date(Date.now() + OTP_TTL_MS);
- 
+
     await this.usersService.storeOtpHash(user.id, otpHash, otpExpiresAt);
- 
+
     try {
       await this.mailService.sendVerificationOtp(
         user.email,
@@ -90,7 +92,7 @@ export class AuthService {
         `Resend failure for user ${user.id} (${user.email})`,
         err instanceof Error ? err.stack : err,
       );
- 
+
       return {
         status: 'pending',
         message:
@@ -98,7 +100,7 @@ export class AuthService {
         httpStatus: HttpStatus.ACCEPTED,
       };
     }
- 
+
     // AC #11, AC #12: 201, no tokens
     return {
       status: 'success',
@@ -198,6 +200,90 @@ export class AuthService {
     await this.usersService.markPasswordResetAsUsed(resetPassword.id);
     await this.usersService.clearPasswordResetToken(user.id);
   }
+
+  async verifyOtp(
+    dto: VerifyOtpDto,
+    res: Response,
+  ): Promise<{
+    status: string;
+    message: string;
+    user: {
+      id: string;
+      email: string;
+      role: string | null;
+      onboardingComplete: boolean;
+    };
+  }> {
+    const lowercasedEmail = dto.email.toLowerCase();
+    const user = await this.usersService.findByEmail(lowercasedEmail);
+
+    if (!user) {
+      throw new BadRequestException('No account found for this email address.');
+    }
+
+    if (user.isVerified) {
+      throw new ConflictException(
+        'This account has already been verified. Please log in.',
+      );
+    }
+
+    if (!user.otpHash || !user.otpExpiresAt) {
+      throw new BadRequestException(
+        'No OTP found for this email. Please request a new verification code.',
+      );
+    }
+
+    if (new Date() > user.otpExpiresAt) {
+      throw new GoneException({
+        errorCode: 'OTP_EXPIRED',
+        message:
+          'Your verification code has expired. Please request a new one.',
+      });
+    }
+
+    const isValid = await bcrypt.compare(dto.otp, user.otpHash);
+    if (!isValid) {
+      throw new BadRequestException({
+        errorCode: 'OTP_INVALID',
+        message:
+          'That code is incorrect. Please check your email and try again.',
+      });
+    }
+
+    await this.usersService.clearOtp(user.id);
+
+    const tokens = await this.issueTokens(user);
+
+    res.cookie('accessToken', tokens.accessToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+
+    res.cookie('refreshToken', tokens.refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password, refreshTokenHash, deletedAt, ...safeUser } = user;
+
+    return {
+      status: 'success',
+      message: 'Email verified successfully.',
+      user: {
+        id: safeUser.id,
+        email: safeUser.email,
+        role: safeUser.role,
+        onboardingComplete: safeUser.onboardingComplete,
+      },
+    };
+  }
+
+  // Helper method to simulate OTP generation and sending for non-existent emails
 
   private async issueTokens(user: User): Promise<AuthResponse> {
     const tokens = await this.signTokens(user);

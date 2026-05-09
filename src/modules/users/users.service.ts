@@ -28,10 +28,9 @@ export class UsersService {
     private readonly resetPasswordAction: ResetPasswordModelAction,
   ) {}
 
-    
   async createEmailUser(dto: CreateUserDto): Promise<User> {
     const normalised = dto.email.toLowerCase();
- 
+
     const existing = await this.userModelAction.findByEmail(normalised);
     if (existing) {
       throw new ConflictException({
@@ -41,8 +40,8 @@ export class UsersService {
       });
     }
 
-    const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS)
- 
+    const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
+
     return this.userModelAction.create({
       ...NO_TRANSACTION,
       createPayload: {
@@ -51,7 +50,7 @@ export class UsersService {
         fullName: dto.fullName,
         role: null,
         isVerified: false,
-        authProvider: AuthProvider.EMAIL,
+        authProvider: AuthProvider.EMAIL as AuthProvider,
         otpHash: null,
         otpExpiresAt: null,
       },
@@ -69,7 +68,7 @@ export class UsersService {
       updatePayload: { otpHash, otpExpiresAt: expiresAt },
     });
   }
- 
+
   async clearOtp(userId: string): Promise<void> {
     await this.userModelAction.update({
       ...NO_TRANSACTION,

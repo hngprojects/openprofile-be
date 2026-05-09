@@ -18,6 +18,7 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -33,13 +34,13 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.authService.register(dto);
- 
+
     if ('httpStatus' in result) {
       const { httpStatus, ...body } = result;
       res.status(httpStatus);
       return body;
     }
- 
+
     res.status(HttpStatus.CREATED);
     return result;
   }
@@ -89,5 +90,25 @@ export class AuthController {
   @ApiOperation({ summary: 'Reset password using token from email' })
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
+  }
+
+  @Public()
+  @Post('verify-otp')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify OTP for email verification' })
+  async verifyOtp(
+    @Body() dto: VerifyOtpDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.verifyOtp(dto, res);
+
+    if ('httpStatus' in result) {
+      const { httpStatus, ...body } = result;
+      res.status(httpStatus as number);
+      return body;
+    }
+
+    res.status(HttpStatus.OK);
+    return result;
   }
 }

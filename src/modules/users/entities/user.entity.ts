@@ -55,6 +55,10 @@ export class User {
   @ApiProperty({ default: false })
   @Column({ type: 'boolean', name: 'is_verified', default: false })
   isVerified: boolean;
+  
+  @ApiProperty({ default: false })
+  @Column({ type: 'boolean', name: 'onboarding_complete', default: false })
+  onboardingComplete: boolean;
  
   @Exclude()
   @Column({ type: 'varchar', length: 255, name: 'otp_hash', nullable: true })
