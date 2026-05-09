@@ -85,6 +85,7 @@ export class AuthService {
     if (ipCount > IP_RATE_LIMIT_MAX) {
       throw new HttpException(
         {
+          error: 'IP_RATE_LIMIT_EXCEEDED',
           message:
             'Too many requests. Please wait 15 minutes before trying again.',
         },
@@ -95,21 +96,21 @@ export class AuthService {
     const user = await this.usersService.findByEmail(dto.email);
     if (!user) {
       throw new UnauthorizedException({
-        errorCode: 'INVALID_CREDENTIALS',
+        error: 'INVALID_CREDENTIALS',
         message: 'The email or password you entered is incorrect.',
       });
     }
 
     if (user.provider !== AuthProvider.LOCAL) {
       throw new BadRequestException({
-        errorCode: 'WRONG_PROVIDER',
+        error: 'WRONG_PROVIDER',
         message: `This account was created with ${user.provider === AuthProvider.GOOGLE ? 'Google' : user.provider}. Please use the Continue with ${user.provider === AuthProvider.GOOGLE ? 'Google' : user.provider} button.`,
       });
     }
 
     if (!user.isVerified) {
       throw new ForbiddenException({
-        errorCode: 'EMAIL_NOT_VERIFIED',
+        error: 'EMAIL_NOT_VERIFIED',
         email: user.email,
         message: 'Please verify your email address before logging in.',
       });
@@ -121,7 +122,7 @@ export class AuthService {
     if (isLocked) {
       throw new HttpException(
         {
-          errorCode: 'ACCOUNT_LOCKED',
+          error: 'ACCOUNT_LOCKED',
           message:
             'Your account has been temporarily locked after too many failed attempts. Please try again in 30 minutes or reset your password.',
         },
@@ -148,7 +149,7 @@ export class AuthService {
         );
       }
       throw new UnauthorizedException({
-        errorCode: 'INVALID_CREDENTIALS',
+        error: 'INVALID_CREDENTIALS',
         message: 'The email or password you entered is incorrect.',
       });
     }
