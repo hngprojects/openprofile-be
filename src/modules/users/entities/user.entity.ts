@@ -39,7 +39,12 @@ export class User {
   role: UserRole;
 
   @Exclude()
-  @Column({ type: 'varchar', length: 500, nullable: true, name: 'refresh_token_hash' })
+  @Column({
+    type: 'varchar',
+    length: 500,
+    nullable: true,
+    name: 'refresh_token_hash',
+  })
   refreshTokenHash: string | null;
 
   @ApiProperty()

@@ -13,8 +13,10 @@ export interface ApiResponse<T> {
 }
 
 @Injectable()
-export class TransformInterceptor<T>
-  implements NestInterceptor<T, ApiResponse<T>> {
+export class TransformInterceptor<T> implements NestInterceptor<
+  T,
+  ApiResponse<T>
+> {
   intercept(
     _context: ExecutionContext,
     next: CallHandler<T>,
@@ -26,7 +28,11 @@ export class TransformInterceptor<T>
           typeof payload === 'object' &&
           'paginationMeta' in (payload as object)
         ) {
-          const { paginationMeta, payload: data, ...rest } = payload as unknown as {
+          const {
+            paginationMeta,
+            payload: data,
+            ...rest
+          } = payload as unknown as {
             paginationMeta: Record<string, unknown>;
             payload: T;
             [key: string]: unknown;

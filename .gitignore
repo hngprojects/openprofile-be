@@ -38,6 +38,9 @@ lerna-debug.log*
 
 # dotenv environment variable files
 .env
+
+# pnpm lock file (project uses npm)
+pnpm-lock.yaml
 .env.development.local
 .env.test.local
 .env.production.local

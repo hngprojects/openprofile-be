@@ -15,14 +15,14 @@ A production-ready NestJS 11 starter with PostgreSQL, JWT auth, the repository p
 ## Prerequisites
 
 - Node.js 20+
-- pnpm (or npm/yarn — adjust commands accordingly)
+- npm (or pnpm/yarn — adjust commands accordingly)
 - A running PostgreSQL 14+ instance
 
 ## Quick start
 
 ```bash
 # 1. Install
-pnpm install
+npm install
 
 # 2. Configure
 cp .env.example .env
@@ -32,14 +32,14 @@ cp .env.example .env
 createdb nestjs_starter   # or your preferred client
 
 # 4. Apply migrations
-pnpm migration:run
+npm run migration:run
 
 # 5. (optional) Seed an admin user
-pnpm seed
+npm run seed
 # creates admin@example.com / Admin@123456
 
 # 6. Run
-pnpm start:dev
+npm run start:dev
 ```
 
 Open `http://localhost:3000/docs` for the Swagger UI.
@@ -47,29 +47,31 @@ Open `http://localhost:3000/docs` for the Swagger UI.
 ## Scripts
 
 ### App
-| Script | Purpose |
-|---|---|
-| `pnpm start:dev` | Run with watch mode |
-| `pnpm start:debug` | Run with `--inspect` debugger |
-| `pnpm start:prod` | Run the compiled `dist/main.js` |
-| `pnpm build` | Compile to `dist/` |
-| `pnpm lint` | Lint and auto-fix |
-| `pnpm format` | Prettier |
-| `pnpm test` | Unit tests |
-| `pnpm test:e2e` | End-to-end tests |
-| `pnpm test:cov` | Coverage report |
+
+| Script                | Purpose                         |
+| --------------------- | ------------------------------- |
+| `npm run start:dev`   | Run with watch mode             |
+| `npm run start:debug` | Run with `--inspect` debugger   |
+| `npm run start:prod`  | Run the compiled `dist/main.js` |
+| `npm run build`       | Compile to `dist/`              |
+| `npm run lint`        | Lint and auto-fix               |
+| `npm run format`      | Prettier                        |
+| `npm run test`        | Unit tests                      |
+| `npm run test:e2e`    | End-to-end tests                |
+| `npm run test:cov`    | Coverage report                 |
 
 ### Database
-| Script | Purpose |
-|---|---|
-| `pnpm migration:run` | Apply all pending migrations |
-| `pnpm migration:revert` | Revert the most recent migration |
-| `pnpm migration:show` | List migrations and their status |
-| `pnpm migration:generate src/database/migrations/<Name>` | Diff entities vs DB and generate a migration |
-| `pnpm migration:create src/database/migrations/<Name>` | Create an empty migration |
-| `pnpm schema:drop` | Drop all tables (destructive — dev only) |
-| `pnpm seed` | Run all seeders |
-| `pnpm db:reset` | Drop schema, run migrations, run seeders |
+
+| Script                                                      | Purpose                                      |
+| ----------------------------------------------------------- | -------------------------------------------- |
+| `npm run migration:run`                                     | Apply all pending migrations                 |
+| `npm run migration:revert`                                  | Revert the most recent migration             |
+| `npm run migration:show`                                    | List migrations and their status             |
+| `npm run migration:generate src/database/migrations/<Name>` | Diff entities vs DB and generate a migration |
+| `npm run migration:create src/database/migrations/<Name>`   | Create an empty migration                    |
+| `npm run schema:drop`                                       | Drop all tables (destructive — dev only)     |
+| `npm run seed`                                              | Run all seeders                              |
+| `npm run db:reset`                                          | Drop schema, run migrations, run seeders     |
 
 > The `migration:generate` script requires a live database connection so TypeORM can diff against the current schema.
 
@@ -89,6 +91,8 @@ src/
 ├── modules/
 │   ├── auth/               # /auth/register, /login, /refresh, /logout, /me
 │   ├── health/             # /health (public)
+│   ├── mail/               # nodemailer sender + queue worker for emails
+│   ├── queue/              # BullMQ root config + shared queue service
 │   └── users/              # CRUD example using the repository pattern
 │       ├── actions/        # UserModelAction extends AbstractModelAction<User>
 │       ├── dto/
@@ -137,8 +141,8 @@ export class UsersService {
 4. Implement service and controller
 5. Wire up the module: `imports: [TypeOrmModule.forFeature([Entity])]`, providers include the model action
 6. Register the module in `AppModule.imports`
-7. Generate a migration: `pnpm migration:generate src/database/migrations/Add<Name>`
-8. Apply it: `pnpm migration:run`
+7. Generate a migration: `npm run migration:generate src/database/migrations/Add<Name>`
+8. Apply it: `npm run migration:run`
 
 ### Env validation
 
@@ -151,15 +155,88 @@ const port = env.PORT; // typed as number
 
 ### Auth flow
 
-| Endpoint | Method | Auth | Purpose |
-|---|---|---|---|
-| `/auth/register` | POST | public | Create account, returns access + refresh tokens |
-| `/auth/login` | POST | public | Returns access + refresh tokens |
-| `/auth/refresh` | POST | public | Issue a new access token from a refresh token |
-| `/auth/logout` | POST | bearer | Revoke the current refresh token |
-| `/auth/me` | GET | bearer | Return current user |
+| Endpoint         | Method | Auth   | Purpose                                         |
+| ---------------- | ------ | ------ | ----------------------------------------------- |
+| `/auth/register` | POST   | public | Create account, returns access + refresh tokens |
+| `/auth/login`    | POST   | public | Returns access + refresh tokens                 |
+| `/auth/refresh`  | POST   | public | Issue a new access token from a refresh token   |
+| `/auth/logout`   | POST   | bearer | Revoke the current refresh token                |
+| `/auth/me`       | GET    | bearer | Return current user                             |
 
 The global `JwtAuthGuard` protects every route by default. Decorate handlers (or controllers) with `@Public()` to opt out.
+
+### Queue-to-mail flow
+
+This project uses BullMQ as the background job layer and Nodemailer as the mail sender:
+
+1. A service such as `AuthService` creates a payload for the email job.
+2. The service calls `QueueService.addJob(...)` with `QUEUE_NAMES.EMAIL` and `QUEUE_JOB_NAMES.EMAIL.SEND_PASSWORD_RESET`.
+3. BullMQ stores the job in Redis using the settings from `src/modules/queue/config/bull.config.ts`.
+4. `MailProcessor` consumes the job and hands the payload to `MailService`.
+5. `MailService` sends the actual email through Nodemailer.
+
+Example enqueue call from a domain service:
+
+```ts
+await this.queueService.addJob(
+  QUEUE_NAMES.EMAIL,
+  QUEUE_JOB_NAMES.EMAIL.SEND_PASSWORD_RESET,
+  {
+    to: user.email,
+    resetLink: `${env.APP_URL}/reset-password?token=${rawToken}`,
+  },
+  {
+    jobId: `user-${user.id}`,
+  },
+);
+```
+
+Example processor behavior:
+
+```ts
+@Processor(QUEUE_NAMES.EMAIL)
+export class MailProcessor extends WorkerHost {
+  async process(job: Job) {
+    switch (job.name) {
+      case QUEUE_JOB_NAMES.EMAIL.SEND_PASSWORD_RESET:
+        await this.mailService.sendEmail(
+          job.data.to,
+          'Password Reset Request',
+          resetPasswordEmailTemplate({ resetUrl: job.data.resetLink }),
+        );
+        break;
+    }
+  }
+}
+```
+
+Example mail sender behavior:
+
+```ts
+await this.transporter.sendMail({
+  from: env.MAIL_FROM,
+  to,
+  subject,
+  html,
+});
+```
+
+Required env vars for mail:
+
+- `MAIL_HOST`
+- `MAIL_PORT`
+- `MAIL_USER`
+- `MAIL_PASS`
+- `MAIL_FROM`
+- `APP_URL`
+- `REDIS_URL`
+
+Recommended responsibilities:
+
+- `QueueModule`: registers BullMQ once and owns Redis connection defaults.
+- `MailModule`: owns mail config, the Nodemailer sender, and the worker processor.
+- `AuthService` or any domain service: enqueues the email job.
+- `MailProcessor`: turns the queued job into a sent email.
 
 ### Response envelope
 
@@ -191,14 +268,21 @@ Errors go through `HttpExceptionFilter`:
 
 See `.env.example` for the full list. Critical ones:
 
-| Variable | Notes |
-|---|---|
-| `DATABASE_*` | host/port/user/password/name |
-| `DATABASE_SYNC` | **Always `false` in non-dev** — use migrations |
-| `DATABASE_SSL` | `true` for managed providers (Neon, Supabase, RDS) |
-| `JWT_ACCESS_SECRET` | Min 32 chars |
-| `JWT_REFRESH_SECRET` | Min 32 chars, must differ from access secret |
-| `SWAGGER_ENABLED` | Set to `false` in production if you don't want public docs |
+| Variable             | Notes                                                      |
+| -------------------- | ---------------------------------------------------------- |
+| `DATABASE_*`         | host/port/user/password/name                               |
+| `DATABASE_SYNC`      | **Always `false` in non-dev** — use migrations             |
+| `DATABASE_SSL`       | `true` for managed providers (Neon, Supabase, RDS)         |
+| `JWT_ACCESS_SECRET`  | Min 32 chars                                               |
+| `JWT_REFRESH_SECRET` | Min 32 chars, must differ from access secret               |
+| `SWAGGER_ENABLED`    | Set to `false` in production if you don't want public docs |
+| `MAIL_HOST`          | SMTP host used by Nodemailer                               |
+| `MAIL_PORT`          | SMTP port, usually `587` or `465`                          |
+| `MAIL_USER`          | SMTP username                                              |
+| `MAIL_PASS`          | SMTP password                                              |
+| `MAIL_FROM`          | Default sender address                                     |
+| `APP_URL`            | Used to build password reset links                         |
+| `REDIS_URL`          | Redis connection string used by BullMQ                     |
 
 ## License
 

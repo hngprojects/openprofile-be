@@ -1,37 +1,46 @@
 # Contributing
 
-Thanks for contributing to **nestjs-starter**! This guide covers setup, branching, commits, and the PR workflow.
+Thanks for contributing to **openprofile-be**! This guide covers setup, branching, commits, and the PR workflow.
 
 ## Prerequisites
 
 - Node.js 20+
-- pnpm 9+ (preferred). If you use npm/yarn, translate commands accordingly.
+- npm 9+. If you use pnpm/yarn, translate commands accordingly.
 - PostgreSQL 14+ for local development
 
 ## Getting started
 
 1. Fork the repo and clone your fork.
 2. Install dependencies:
-   ```bash
-   pnpm install
-   ```
+
+    ```bash
+    npm install
+    ```
+
 3. Create your environment file:
-   ```bash
-   cp .env.example .env
-   ```
+
+    ```bash
+    cp .env.example .env
+    ```
+
 4. Create the database and run migrations:
-   ```bash
-   createdb nestjs_starter
-   pnpm migration:run
-   ```
+
+    ```bash
+    createdb nestjs_starter
+    npm run migration:run
+    ```
+
 5. (Optional) Seed data:
-   ```bash
-   pnpm seed
-   ```
+
+    ```bash
+    npm run seed
+    ```
+
 6. Run the app:
-   ```bash
-   pnpm start:dev
-   ```
+
+    ```bash
+    npm run start:dev
+    ```
 
 ## Branching
 
@@ -80,10 +89,12 @@ Guidelines:
 ## Code style
 
 - Run formatting and linting before pushing:
-  ```bash
-  pnpm format
-  pnpm lint
-  ```
+
+    ```bash
+    npm run format
+    npm run lint
+    ```
+
 - Follow existing patterns in `src/common` and `src/modules`.
 - Prefer small, composable services and keep controllers thin.
 
@@ -92,9 +103,9 @@ Guidelines:
 Run the suite locally before opening a PR:
 
 ```bash
-pnpm test
-pnpm test:e2e
-pnpm build
+npm test
+npm run test:e2e
+npm run build
 ```
 
 If you add or change behavior, include or update tests.
@@ -105,19 +116,22 @@ If you add or change behavior, include or update tests.
 - For schema changes:
   1. Update entities.
   2. Generate a migration:
-     ```bash
-     pnpm migration:generate src/database/migrations/<Name>
-     ```
+
+      ```bash
+      npm run migration:generate src/database/migrations/<Name>
+      ```
+
   3. Apply it:
-     ```bash
-     pnpm migration:run
-     ```
+
+      ```bash
+      npm run migration:run
+      ```
 
 ## Pull requests
 
 Before opening a PR:
 
-- Ensure `pnpm lint`, `pnpm build`, and relevant tests pass.
+- Ensure `npm run lint`, `npm run build`, and relevant tests pass.
 - Keep changes minimal and aligned with the PR title.
 - Update docs when behavior or configuration changes.
 

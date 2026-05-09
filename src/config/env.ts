@@ -29,11 +29,13 @@ export const env = createEnv({
       .default(false)
       .transform((v) => v === true || v === 'true'),
 
-    JWT_ACCESS_SECRET: z.string().min(32, 'JWT_ACCESS_SECRET must be at least 32 chars'),
+    JWT_ACCESS_SECRET: z
+      .string()
+      .min(32, { message: 'JWT_ACCESS_SECRET must be at least 32 chars' }),
     JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
     JWT_REFRESH_SECRET: z
       .string()
-      .min(32, 'JWT_REFRESH_SECRET must be at least 32 chars'),
+      .min(32, { message: 'JWT_REFRESH_SECRET must be at least 32 chars' }),
     JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
 
     CORS_ORIGIN: z.string().default('*'),
@@ -41,6 +43,19 @@ export const env = createEnv({
       .union([z.boolean(), z.enum(['true', 'false'])])
       .default(true)
       .transform((v) => v === true || v === 'true'),
+
+    MAIL_HOST: z.string().min(1).optional(),
+    MAIL_PORT: z.coerce.number().int().positive().default(587),
+    MAIL_USER: z.string().min(1).optional(),
+    MAIL_PASS: z.string().min(1).optional(),
+    MAIL_FROM: z.string().min(1).optional(),
+    MAIL_SECURE: z
+      .union([z.boolean(), z.enum(['true', 'false'])])
+      .default(false)
+      .transform((v) => v === true || v === 'true')
+      .optional(),
+    APP_URL: z.string().url().optional(),
+    REDIS_URL: z.string().min(1).optional(),
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,

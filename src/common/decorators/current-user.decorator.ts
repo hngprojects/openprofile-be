@@ -5,10 +5,14 @@ export interface AuthenticatedUser {
   email: string;
 }
 
+interface RequestWithUser {
+  user?: AuthenticatedUser;
+}
+
 export const CurrentUser = createParamDecorator(
   (data: keyof AuthenticatedUser | undefined, ctx: ExecutionContext) => {
-    const request = ctx.switchToHttp().getRequest();
-    const user = request.user as AuthenticatedUser | undefined;
+    const request = ctx.switchToHttp().getRequest<RequestWithUser>();
+    const user = request.user;
     if (!user) return undefined;
     return data ? user[data] : user;
   },

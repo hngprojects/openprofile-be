@@ -1,7 +1,7 @@
 import { Module, ValidationPipe } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -12,7 +12,11 @@ import { jwtConfig } from './config/jwt.config';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { HealthModule } from './modules/health/health.module';
+import { WaitlistModule } from './modules/waitlist/waitlist.module';
+
 import { UsersModule } from './modules/users/users.module';
+import { QueueModule } from './modules/queue/queue.module';
+import { MailModule } from './modules/mail/mail.module';
 
 @Module({
   imports: [
@@ -21,11 +25,15 @@ import { UsersModule } from './modules/users/users.module';
       load: [appConfig, databaseConfig, jwtConfig],
     }),
     TypeOrmModule.forRootAsync({
-      useFactory: () => databaseConfig(),
+      useFactory: (): TypeOrmModuleOptions => databaseConfig(),
     }),
+    QueueModule,
+    WaitlistModule,
     HealthModule,
     UsersModule,
     AuthModule,
+    QueueModule,
+    MailModule,
   ],
   providers: [
     {

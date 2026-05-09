@@ -15,18 +15,16 @@ async function bootstrap() {
   app.use(helmet());
   app.use(compression());
   app.enableCors({
-    origin: env.CORS_ORIGIN === '*' ? true : env.CORS_ORIGIN.split(','),
+    origin: env.CORS_ORIGIN === '*' ? true : (env.CORS_ORIGIN as string).split(','),
     credentials: true,
   });
   app.setGlobalPrefix('api', { exclude: ['health'] });
-  app.useGlobalInterceptors(
-    new ClassSerializerInterceptor(app.get(Reflector)),
-  );
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
   app.enableShutdownHooks();
 
   if (env.SWAGGER_ENABLED) {
     const config = new DocumentBuilder()
-      .setTitle('NestJS Starter')
+      .setTitle('OpenProfile BE')
       .setDescription('REST API documentation')
       .setVersion('1.0.0')
       .addBearerAuth(
@@ -40,12 +38,12 @@ async function bootstrap() {
     });
   }
 
-  await app.listen(env.PORT);
+  await app.listen(env.PORT as number);
 
   const logger = new Logger('Bootstrap');
-  logger.log(`Application running on http://localhost:${env.PORT}`);
-  if (env.SWAGGER_ENABLED) {
-    logger.log(`Swagger docs at http://localhost:${env.PORT}/docs`);
+  logger.log(`Application running on http://localhost:${env.PORT as number}`);
+  if (env.SWAGGER_ENABLED as boolean) {
+    logger.log(`Swagger docs at http://localhost:${env.PORT as number}/docs`);
   }
 }
 

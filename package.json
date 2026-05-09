@@ -1,13 +1,12 @@
 {
-  "name": "nestjs-starter",
+  "name": "openprofile-be",
   "version": "0.0.1",
   "description": "",
   "author": "",
   "private": true,
   "license": "UNLICENSED",
   "engines": {
-    "node": ">=20.0.0",
-    "pnpm": ">=9.0.0"
+    "node": ">=20.0.0"
   },
   "scripts": {
     "build": "nest build",
@@ -21,19 +20,21 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:unit": "jest --testPathPatterns=\\.spec\\.ts$ --passWithNoTests",
+    "test:e2e": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json --runInBand --forceExit",
     "typeorm": "typeorm-ts-node-commonjs -d src/database/data-source.ts",
-    "migration:generate": "pnpm typeorm migration:generate",
+    "migration:generate": "npm run typeorm migration:generate",
     "migration:create": "typeorm-ts-node-commonjs migration:create",
-    "migration:run": "pnpm typeorm migration:run",
-    "migration:revert": "pnpm typeorm migration:revert",
-    "migration:show": "pnpm typeorm migration:show",
-    "schema:drop": "pnpm typeorm schema:drop",
+    "migration:run": "npm run typeorm migration:run",
+    "migration:revert": "npm run typeorm migration:revert",
+    "migration:show": "npm run typeorm migration:show",
+    "schema:drop": "npm run typeorm schema:drop",
     "seed": "ts-node -r tsconfig-paths/register src/database/seeds/run-seed.ts",
-    "db:reset": "pnpm schema:drop && pnpm migration:run && pnpm seed"
+    "db:reset": "npm run schema:drop && npm run migration:run && npm run seed"
   },
   "dependencies": {
     "@hng-sdk/orm": "^0.0.0",
+    "@nestjs/bullmq": "^11.0.4",
     "@nestjs/common": "^11.1.19",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.1.19",
@@ -43,12 +44,16 @@
     "@nestjs/swagger": "^11.4.2",
     "@nestjs/typeorm": "^11.0.1",
     "@t3-oss/env-core": "^0.13.11",
+    "@types/nodemailer": "^8.0.0",
     "bcrypt": "^6.0.0",
+    "bullmq": "^5.76.6",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "compression": "^1.8.1",
     "dotenv": "^17.4.2",
     "helmet": "^8.1.0",
+    "ioredis": "^5.10.1",
+    "nodemailer": "^8.0.7",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "pg": "^8.20.0",
@@ -69,6 +74,7 @@
     "@types/jest": "^30.0.0",
     "@types/ms": "^2.1.0",
     "@types/node": "^25.6.0",
+    "@types/nodemailer": "^8.0.0",
     "@types/passport-jwt": "^4.0.1",
     "@types/pg": "^8.20.0",
     "@types/supertest": "^7.2.0",
@@ -93,15 +99,23 @@
       "json",
       "ts"
     ],
-    "rootDir": "src",
-    "testRegex": ".*\\.spec\\.ts$",
+    "rootDir": ".",
+    "testRegex": ".*\\.(spec|e2e-spec)\\.ts$",
     "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
+      "^.+\\.(t|j)s$": [
+        "ts-jest",
+        {
+          "diagnostics": false
+        }
+      ]
     },
-    "collectCoverageFrom": [
-      "**/*.(t|j)s"
+    "transformIgnorePatterns": [
+      "node_modules/(?!@t3-oss/env-core/)"
     ],
-    "coverageDirectory": "../coverage",
+    "collectCoverageFrom": [
+      "src/**/*.(t|j)s"
+    ],
+    "coverageDirectory": "coverage",
     "testEnvironment": "node"
   }
 }
