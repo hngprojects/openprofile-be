@@ -7,7 +7,6 @@ import {
 import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
 import { v7 as uuidv7 } from 'uuid';
-import { UserRole } from './entities/user.entity';
 import { UserModelAction } from './actions/user.action';
 import { ResetPasswordModelAction } from './actions/reset-password.action';
 import { CreateUserDto } from './dto/create-user.dto';

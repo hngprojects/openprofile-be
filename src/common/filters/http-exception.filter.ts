@@ -32,8 +32,11 @@ export class HttpExceptionFilter implements ExceptionFilter {
         message = (r.message as string | string[]) ?? message;
         error = (r.error as string) ?? exception.name;
         // pass through any extra fields (errorCode, email, etc.)
-        const { message: _m, error: _e, statusCode: _s, ...rest } = r;
-        extras = rest;
+        extras = Object.fromEntries(
+          Object.entries(r).filter(
+            ([k]) => !['message', 'error', 'statusCode'].includes(k),
+          ),
+        );
       }
     } else if (exception instanceof Error) {
       message = exception.message;

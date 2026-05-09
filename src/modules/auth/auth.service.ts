@@ -387,7 +387,7 @@ export class AuthService {
       });
     }
 
-    const isValid = await argon2.verify(user.otpHash!, dto.otp);
+    const isValid = await argon2.verify(user.otpHash, dto.otp);
     if (!isValid) {
       throw new BadRequestException({
         errorCode: 'OTP_INVALID',

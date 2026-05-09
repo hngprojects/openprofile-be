@@ -18,7 +18,7 @@ async function bootstrap() {
   app.use(cookieParser());
   app.enableCors({
     origin:
-      env.CORS_ORIGIN === '*' ? true : (env.CORS_ORIGIN as string).split(','),
+      env.CORS_ORIGIN === '*' ? true : (env.CORS_ORIGIN).split(','),
     credentials: true,
   });
   app.setGlobalPrefix('api', { exclude: ['health'] });
