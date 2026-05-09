@@ -113,7 +113,8 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
-            cp /home/techgoddess-op/env.staging /var/www/openprofile-be/staging/.env
+            cd /var/www/openprofile-be/staging
+            cp .env.staging  staging/.env
 
       - name: Install dependencies and build
         uses: appleboy/ssh-action@v1.0.3
@@ -174,7 +175,8 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
-            cp /home/techgoddess-op/env.main /var/www/openprofile-be/main/.env
+            cd /var/www/openprofile-be/main
+            cp .env.prod  main/.env
 
       - name: Install dependencies and build
         uses: appleboy/ssh-action@v1.0.3
