@@ -14,6 +14,11 @@ export enum UserRole {
   ADMIN = 'admin',
   USER = 'user',
 }
+export enum AuthProvider {
+  EMAIL = 'email',
+  GOOGLE = 'google',
+}
+
 
 @Entity('users')
 export class User {
@@ -34,9 +39,34 @@ export class User {
   @Column({ type: 'varchar', length: 255, name: 'full_name' })
   fullName: string;
 
-  @ApiProperty({ enum: UserRole, default: UserRole.USER })
-  @Column({ type: 'enum', enum: UserRole, default: UserRole.USER })
-  role: UserRole;
+  @ApiProperty({ enum: UserRole, nullable: true, default: null })
+  @Column({ type: 'enum', enum: UserRole, nullable: true, default: null })
+  role: UserRole | null;
+ 
+  @ApiProperty({ enum: AuthProvider, default: AuthProvider.EMAIL })
+  @Column({
+    type: 'varchar',
+    length: 50,
+    name: 'auth_provider',
+    default: AuthProvider.EMAIL,
+  })
+  authProvider: AuthProvider;
+
+  @ApiProperty({ default: false })
+  @Column({ type: 'boolean', name: 'is_verified', default: false })
+  isVerified: boolean;
+ 
+  @Exclude()
+  @Column({ type: 'varchar', length: 255, name: 'otp_hash', nullable: true })
+  otpHash: string | null;
+ 
+  @Exclude()
+  @Column({
+    type: 'timestamp with time zone',
+    name: 'otp_expires_at',
+    nullable: true,
+  })
+  otpExpiresAt: Date | null;
 
   @Exclude()
   @Column({
