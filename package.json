@@ -45,6 +45,7 @@
     "@nestjs/typeorm": "^11.0.1",
     "@t3-oss/env-core": "^0.13.11",
     "@types/nodemailer": "^8.0.0",
+    "argon2": "^0.44.0",
     "bcrypt": "^6.0.0",
     "bullmq": "^5.76.6",
     "class-transformer": "^0.5.1",
@@ -58,6 +59,7 @@
     "passport-jwt": "^4.0.1",
     "pg": "^8.20.0",
     "reflect-metadata": "^0.2.2",
+    "resend": "^6.12.3",
     "rxjs": "^7.8.2",
     "typeorm": "^0.3.28",
     "zod": "^4.3.6"
@@ -71,6 +73,7 @@
     "@types/bcrypt": "^6.0.0",
     "@types/compression": "^1.8.1",
     "@types/express": "^5.0.6",
+    "@types/ioredis": "^4.28.10",
     "@types/jest": "^30.0.0",
     "@types/ms": "^2.1.0",
     "@types/node": "^25.6.0",

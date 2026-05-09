@@ -56,6 +56,7 @@ export const env = createEnv({
       .optional(),
     APP_URL: z.string().url().optional(),
     REDIS_URL: z.string().min(1).optional(),
+    RESEND_API_KEY: z.string().min(1).optional(),
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,

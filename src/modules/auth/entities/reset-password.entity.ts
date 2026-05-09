@@ -12,8 +12,12 @@ export class ResetPassword {
   @Column({ name: 'userId' })
   userId!: string;
 
-  @ApiProperty({ description: 'SHA256 hash of the reset token', maxLength: 64 })
-  @Column({ type: 'varchar', length: 64, name: 'tokenHash' })
+  @ApiProperty({ description: 'SHA256 selector for token lookup', maxLength: 64 })
+  @Column({ type: 'varchar', length: 64, name: 'tokenSelector' })
+  tokenSelector!: string;
+
+  @ApiProperty({ description: 'Argon2 hash of the reset token' })
+  @Column({ type: 'text', name: 'tokenHash' })
   tokenHash!: string;
 
   @ApiProperty({ default: false })

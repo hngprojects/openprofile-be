@@ -4,6 +4,7 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
+import * as argon2 from 'argon2';
 import * as bcrypt from 'bcrypt';
 import { v7 as uuidv7 } from 'uuid';
 import { UserModelAction } from './actions/user.action';
@@ -100,6 +101,7 @@ export class UsersService {
 
   async setPasswordResetToken(
     id: string,
+    tokenSelector: string,
     tokenHash: string,
     expires: Date,
   ): Promise<ResetPassword> {
@@ -108,6 +110,7 @@ export class UsersService {
       createPayload: {
         id: uuidv7(),
         userId: id,
+        tokenSelector,
         tokenHash,
         expiresAt: expires,
         used: false,
@@ -116,10 +119,10 @@ export class UsersService {
   }
 
   async findByValidResetToken(
-    tokenHash: string,
+    tokenSelector: string,
   ): Promise<{ user: User; resetPassword: ResetPassword } | null> {
     const resetPassword =
-      await this.resetPasswordAction.findByValidToken(tokenHash);
+      await this.resetPasswordAction.findByValidSelector(tokenSelector);
     if (!resetPassword) return null;
 
     const user = await this.findOne(resetPassword.userId);
@@ -135,11 +138,15 @@ export class UsersService {
   }
 
   async updatePassword(id: string, newPassword: string): Promise<void> {
-    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    const passwordHash = await argon2.hash(newPassword);
     await this.userModelAction.update({
       ...NO_TRANSACTION,
       identifierOptions: { id },
       updatePayload: { password: passwordHash },
     });
+  }
+
+  async findResetTokenBySelector(tokenSelector: string): Promise<ResetPassword | null> {
+    return this.resetPasswordAction.findBySelector(tokenSelector);
   }
 }

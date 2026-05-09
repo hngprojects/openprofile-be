@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Inject } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
+import * as dns from 'dns';
 import * as nodemailer from 'nodemailer';
 import { mailConfig } from './config/mail.config';
 
@@ -21,7 +22,9 @@ export class MailService {
         user: this.mail.user,
         pass: this.mail.pass,
       },
-    });
+      dnsLookup: (hostname, options, callback) =>
+        dns.lookup(hostname, { ...options, family: 4 }, callback),
+    } as nodemailer.TransportOptions);
   }
 
   async sendEmail(to: string, subject: string, html: string): Promise<void> {
