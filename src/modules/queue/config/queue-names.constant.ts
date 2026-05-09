@@ -10,6 +10,8 @@ export const QUEUE_JOB_NAMES = {
     SEND_PASSWORD_CHANGED: 'send-password-changed',
     VERIFY_EMAIL: 'verify-email',
     WAITLIST: 'waitlist',
+    ACCOUNT_LOCKED: 'account-locked',
+    NEW_IP_LOGIN: 'new-ip-login',
   },
 } as const;
 

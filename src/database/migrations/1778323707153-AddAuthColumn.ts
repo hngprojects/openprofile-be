@@ -8,19 +8,19 @@ export class AddAuthColumn1778323707153 implements MigrationInterface {
       `CREATE TABLE IF NOT EXISTS "waitList" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "email" character varying NOT NULL, "emailSent" boolean NOT NULL DEFAULT false, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "UQ_c964d1d61359c1a9f8aa31eb0c2" UNIQUE ("email"), CONSTRAINT "PK_f96a6aa67f33d3613d1a7f904ea" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
-      `ALTER TABLE "users" ADD "auth_provider" character varying(50) NOT NULL DEFAULT 'email'`,
+      `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "auth_provider" character varying(50) NOT NULL DEFAULT 'email'`,
     );
     await queryRunner.query(
-      `ALTER TABLE "users" ADD "is_verified" boolean NOT NULL DEFAULT false`,
+      `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "is_verified" boolean NOT NULL DEFAULT false`,
     );
     await queryRunner.query(
-      `ALTER TABLE "users" ADD "onboarding_complete" boolean NOT NULL DEFAULT false`,
+      `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "onboarding_complete" boolean NOT NULL DEFAULT false`,
     );
     await queryRunner.query(
-      `ALTER TABLE "users" ADD "otp_hash" character varying(255)`,
+      `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "otp_hash" character varying(255)`,
     );
     await queryRunner.query(
-      `ALTER TABLE "users" ADD "otp_expires_at" TIMESTAMP WITH TIME ZONE`,
+      `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "otp_expires_at" TIMESTAMP WITH TIME ZONE`,
     );
     await queryRunner.query(
       `ALTER TABLE "users" ALTER COLUMN "role" DROP NOT NULL`,

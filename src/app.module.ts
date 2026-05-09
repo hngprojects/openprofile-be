@@ -9,6 +9,7 @@ import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { RedisModule } from './common/redis/redis.module';
 import { appConfig } from './config/app.config';
 import { databaseConfig } from './config/database.config';
 import './config/env';
@@ -17,7 +18,6 @@ import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { HealthModule } from './modules/health/health.module';
 import { WaitlistModule } from './modules/waitlist/waitlist.module';
-
 import { UsersModule } from './modules/users/users.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { MailModule } from './modules/mail/mail.module';
@@ -38,12 +38,12 @@ import { ThrottlerModule } from '@nestjs/throttler';
     TypeOrmModule.forRootAsync({
       useFactory: (): TypeOrmModuleOptions => databaseConfig(),
     }),
+    RedisModule,
     QueueModule,
     WaitlistModule,
     HealthModule,
     UsersModule,
     AuthModule,
-    QueueModule,
     MailModule,
   ],
   providers: [
