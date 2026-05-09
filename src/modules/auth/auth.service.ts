@@ -1,11 +1,13 @@
 import {
   BadRequestException,
+  HttpStatus,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import * as crypto from 'crypto';
+import { randomInt } from 'crypto';
+import * as crypto from 'çrypto';
 import type { StringValue } from 'ms';
 import { env } from '../../config/env';
 import { User } from '../users/entities/user.entity';
@@ -16,11 +18,17 @@ import { RegisterDto } from './dto/register.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtPayload } from './strategies/jwt.strategy';
 import { QueueService } from '../queue/queue.service';
+import { MailService } from '../mail/mail.service';
+import { Logger } from '@nestjs/common';
 import {
   QUEUE_JOB_NAMES,
   QUEUE_NAMES,
 } from '../queue/config/queue-names.constant';
 import { ResetPasswordEmailData } from '../mail/interfaces/reset-password-email.interface';
+
+
+const BCRYPT_ROUNDS = 10;
+
 
 export interface AuthTokens {
   accessToken: string;
@@ -31,21 +39,71 @@ export interface AuthResponse extends AuthTokens {
   user: Omit<User, 'password' | 'refreshTokenHash' | 'deletedAt'>;
 }
 
+export interface RegisterSuccessResponse {
+  status: 'success';
+  message: string;
+}
+
+export interface RegisterDegradedResponse {
+  status: 'pending';
+  message: string;
+  httpStatus: typeof HttpStatus.ACCEPTED;
+}
+
+const OTP_TTL_MS = 5 * 60 * 1000;
+
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+  
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly queueService: QueueService,
+    private readonly mailService: MailService,
   ) {}
 
-  async register(dto: RegisterDto): Promise<AuthResponse> {
-    const user = await this.usersService.create({
-      email: dto.email,
+  async register(
+    dto: RegisterDto,
+  ): Promise<RegisterSuccessResponse | RegisterDegradedResponse> {
+    const user = await this.usersService.createEmailUser({
+      email: dto.email, 
       password: dto.password,
       fullName: dto.fullName,
     });
-    return this.issueTokens(user);
+ 
+    const otp = this.generateOtp();
+    const otpHash = await bcrypt.hash(otp, BCRYPT_ROUNDS);
+    const otpExpiresAt = new Date(Date.now() + OTP_TTL_MS);
+ 
+    await this.usersService.storeOtpHash(user.id, otpHash, otpExpiresAt);
+ 
+    try {
+      await this.mailService.sendVerificationOtp(
+        user.email,
+        user.fullName,
+        otp,
+      );
+    } catch (err) {
+      // Edge case #1: log failure, return 202, user record is intact
+      this.logger.error(
+        `Resend failure for user ${user.id} (${user.email})`,
+        err instanceof Error ? err.stack : err,
+      );
+ 
+      return {
+        status: 'pending',
+        message:
+          'Account created but we could not send your verification email. Please use the resend option.',
+        httpStatus: HttpStatus.ACCEPTED,
+      };
+    }
+ 
+    // AC #11, AC #12: 201, no tokens
+    return {
+      status: 'success',
+      message: 'A verification code has been sent to your email address.',
+    };
   }
 
   async login(dto: LoginDto): Promise<AuthResponse> {
@@ -172,5 +230,9 @@ export class AuthService {
   ): Promise<void> {
     const hash = await bcrypt.hash(refreshToken, 10);
     await this.usersService.setRefreshTokenHash(userId, hash);
+  }
+
+  private generateOtp(): string {
+    return randomInt(100_000, 1_000_000).toString();
   }
 }
