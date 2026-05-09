@@ -7,12 +7,13 @@ import { WaitListModelAction } from './actions/waitList.action';
 import { WaitListService } from './waitList.service';
 import { WaitList } from './entities/waitList.entity';
 import { EmailModule } from '../../common/email/email.module';
+import { QUEUE_JOB_NAMES } from '../queue/config/queue-names.constant';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([WaitList]),
     BullModule.registerQueue({
-      name: 'waitlist-email',
+      name: QUEUE_JOB_NAMES.EMAIL.WAITLIST,
     }),
     EmailModule,
   ],

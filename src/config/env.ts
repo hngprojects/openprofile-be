@@ -3,12 +3,8 @@ import * as dotenv from 'dotenv';
 import { z } from 'zod';
 
 dotenv.config();
-type EnvSchema = {
-  [K in keyof typeof envSchema]: z.infer<(typeof envSchema)[K]>;
-};
 
-
-export const env:EnvSchema = createEnv({
+export const env = createEnv({
   server: {
     NODE_ENV: z
       .enum(['development', 'test', 'production'])
@@ -42,21 +38,31 @@ export const env:EnvSchema = createEnv({
       .min(32, { message: 'JWT_REFRESH_SECRET must be at least 32 chars' }),
     JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
 
-    SMTP_HOST: z.string().min(1).default('smtp.gmail.com'),
-    SMTP_PORT: z.coerce.number().int().positive().default(587),
-    SMTP_USER: z.string().min(1).default(''),
-    SMTP_PASSWORD: z.string().default(''),
-    SMTP_FROM: z.string().email().default('user@example.com'),
-
     CORS_ORIGIN: z.string().default('*'),
     SWAGGER_ENABLED: z
       .union([z.boolean(), z.enum(['true', 'false'])])
       .default(true)
       .transform((v) => v === true || v === 'true'),
-    REDIS_HOST: z.string().min(1).default('localhost'),
-    REDIS_PORT: z.string().min(1).default('6379'),
-    REDIS_PASSWORD: z.string().default(''),
-    REDIS_DB: z.string().min(1).default('0'),
+
+    MAIL_HOST: z.string().min(1).optional(),
+    MAIL_PORT: z.coerce.number().int().positive().default(587),
+    MAIL_USER: z.string().min(1).optional(),
+    MAIL_PASS: z.string().min(1).optional(),
+    MAIL_FROM: z.string().min(1).optional(),
+    MAIL_SECURE: z
+      .union([z.boolean(), z.enum(['true', 'false'])])
+      .default(false)
+      .transform((v) => v === true || v === 'true')
+      .optional(),
+    APP_URL: z.string().url().optional(),
+    FRONTEND_URL: z.string().url(),
+    REDIS_URL: z.string().min(1).optional(),
+    CLIENT_ID: z.string().min(1),
+    CLIENT_SECRET: z.string().min(1),
+    GOOGLE_CALLBACK_URL: z
+      .string()
+      .url()
+      .default('http://localhost:3000/auth/google/callback'),
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,

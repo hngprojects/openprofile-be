@@ -5,11 +5,16 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
+import { v7 as uuidv7 } from 'uuid';
+import { AuthProvider, UserRole } from './entities/user.entity';
 import { UserModelAction } from './actions/user.action';
+import { ResetPasswordModelAction } from './actions/reset-password.action';
 import { CreateUserDto } from './dto/create-user.dto';
 import { PaginationDto } from './dto/pagination.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
+import { ResetPassword } from '../auth/entities/reset-password.entity';
 
 const BCRYPT_ROUNDS = 10;
 const NO_TRANSACTION = {
@@ -18,7 +23,10 @@ const NO_TRANSACTION = {
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly userModelAction: UserModelAction) {}
+  constructor(
+    private readonly userModelAction: UserModelAction,
+    private readonly resetPasswordAction: ResetPasswordModelAction,
+  ) {}
 
   async create(dto: CreateUserDto): Promise<User> {
     const existing = await this.userModelAction.findByEmail(dto.email);
@@ -89,6 +97,98 @@ export class UsersService {
       ...NO_TRANSACTION,
       identifierOptions: { id },
       updatePayload: { refreshTokenHash: hash },
+    });
+  }
+
+  async setPasswordResetToken(
+    id: string,
+    tokenHash: string,
+    expires: Date,
+  ): Promise<ResetPassword> {
+    return this.resetPasswordAction.create({
+      transactionOptions: { useTransaction: false },
+      createPayload: {
+        id: uuidv7(),
+        userId: id,
+        tokenHash,
+        expiresAt: expires,
+        used: false,
+      },
+    });
+  }
+
+  async linkGoogleAccount(id: string): Promise<User> {
+    const updated = await this.userModelAction.update({
+      ...NO_TRANSACTION,
+      identifierOptions: { id },
+      updatePayload: { authProvider: AuthProvider.GOOGLE },
+    });
+
+    if (!updated) {
+      throw new InternalServerErrorException('Failed to link Google account');
+    }
+
+    return updated;
+  }
+
+  async createGoogleUser(googleUser: {
+    email: string;
+    fullName: string;
+    isVerified?: boolean;
+    onboardingComplete?: boolean;
+  }): Promise<User> {
+    const randomPassword = crypto.randomBytes(16).toString('hex');
+    const passwordHash = await bcrypt.hash(randomPassword, BCRYPT_ROUNDS);
+    return this.userModelAction.create({
+      ...NO_TRANSACTION,
+      createPayload: {
+        email: googleUser.email,
+        password: passwordHash,
+        fullName: googleUser.fullName,
+        role: UserRole.USER,
+        isVerified: googleUser.isVerified ?? false,
+        onboardingComplete: googleUser.onboardingComplete ?? false,
+        authProvider: AuthProvider.GOOGLE,
+      },
+    });
+  }
+
+  logOAuthLogin(
+    userId: string,
+    ipAddress: string,
+    provider: string,
+  ): void {
+    const timestamp = new Date().toISOString();
+    console.log(
+      `OAuth Login - Provider: ${provider}, User: ${userId}, IP: ${ipAddress}, Timestamp: ${timestamp}`,
+    );
+  }
+
+  async findByValidResetToken(
+    tokenHash: string,
+  ): Promise<{ user: User; resetPassword: ResetPassword } | null> {
+    const resetPassword =
+      await this.resetPasswordAction.findByValidToken(tokenHash);
+    if (!resetPassword) return null;
+
+    const user = await this.findOne(resetPassword.userId);
+    return { user, resetPassword };
+  }
+
+  async clearPasswordResetToken(id: string): Promise<void> {
+    await this.resetPasswordAction.deleteByUserId(id);
+  }
+
+  async markPasswordResetAsUsed(resetPasswordId: string): Promise<void> {
+    await this.resetPasswordAction.markAsUsed(resetPasswordId);
+  }
+
+  async updatePassword(id: string, newPassword: string): Promise<void> {
+    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    await this.userModelAction.update({
+      ...NO_TRANSACTION,
+      identifierOptions: { id },
+      updatePayload: { password: passwordHash },
     });
   }
 }

@@ -1,6 +1,7 @@
 import SMTPTransport from 'nodemailer/lib/smtp-transport/index.js';
 import { Injectable, Logger } from '@nestjs/common';
 import { createTransport, Transporter } from 'nodemailer';
+import { env } from '../../config/env';
 
 import { env } from '../../config/env.js';
 import { renderTemplate } from './utils/template-renderer.js';
@@ -26,8 +27,8 @@ export class EmailService {
         secure: env.SMTP_PORT === 465,
 
         auth: {
-          user: env.SMTP_USER,
-          pass: env.SMTP_PASSWORD,
+          user: env.MAIL_USER,
+          pass: env.MAIL_PASS,
         },
       }),
     );

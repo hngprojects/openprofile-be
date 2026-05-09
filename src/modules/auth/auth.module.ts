@@ -1,12 +1,15 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
-import type { StringValue } from 'ms';
 import { env } from '../../config/env';
+import { MailModule } from '../mail/mail.module';
 import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { QueueModule } from '../queue/queue.module';
+import { StringValue } from 'ms';
+import { GoogleStrategy } from './strategies/google.strategy';
 
 @Module({
   imports: [
@@ -16,9 +19,11 @@ import { JwtStrategy } from './strategies/jwt.strategy';
       signOptions: { expiresIn: env.JWT_ACCESS_EXPIRES_IN as StringValue },
     }),
     UsersModule,
+    MailModule,
+    QueueModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, GoogleStrategy],
   exports: [AuthService],
 })
 export class AuthModule {}

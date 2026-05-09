@@ -2,6 +2,7 @@ import SMTPTransport from 'nodemailer/lib/smtp-transport/index.js';
 import { Injectable, Logger } from '@nestjs/common';
 import { env } from '../../config/env.js';
 import { createTransport, Transporter } from 'nodemailer';
+import { MailService } from '../../modules/mail/mail.service.js';
 
 interface EmailResult {
   success: boolean;
@@ -13,16 +14,17 @@ interface EmailResult {
 export class EmailService {
   private readonly transporter: Transporter<SMTPTransport.SentMessageInfo>;
   private readonly logger = new Logger(EmailService.name);
+  private readonly mailService: MailService;
 
   constructor() {
     this.transporter = createTransport<SMTPTransport.SentMessageInfo>(
       new SMTPTransport({
-        host: env.SMTP_HOST,
-        port: env.SMTP_PORT,
-        secure: env.SMTP_PORT === 465,
+        host: env.MAIL_HOST,
+        port: env.MAIL_PORT,
+        secure: env.MAIL_PORT === 465,
         auth: {
-          user: env.SMTP_USER,
-          pass: env.SMTP_PASSWORD,
+          user: env.MAIL_USER,
+          pass: env.MAIL_PASS,
         },
       }),
     );
@@ -32,15 +34,11 @@ export class EmailService {
 
   async sendWaitlistEmail(to: string): Promise<EmailResult> {
     try {
-      const info: SMTPTransport.SentMessageInfo =
-        await this.transporter.sendMail({
-          from: `OpenProfile <${env.SMTP_FROM}>`,
-          to,
-          subject: "You're on the OpenProfile wait list!",
-          html: this.getWaitlistEmailHtml(),
-        });
+      const html = this.getWaitlistEmailHtml();
 
-      return { success: true, data: info };
+      await this.mailService.sendEmail(to, '', html);
+
+      return { success: true };
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : 'Failed to send waitlist email';

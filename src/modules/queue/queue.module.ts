@@ -1,34 +1,17 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { UsersModule } from '../users/users.module';
-
-import { RedisConfig } from '../../common/interfaces/redis-config.interface';
-import { EmailModule } from '../../common/email/email.module';
+import { QUEUE_NAMES } from './config/queue-names.constant';
+import { QueueService } from './queue.service';
+import { bullConfig } from './config/bull.config';
 
 @Module({
   imports: [
-    UsersModule,
-    BullModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => {
-        const cfg = configService.get<RedisConfig>('redis');
-        return {
-          connection: {
-            host: cfg?.host,
-            port: cfg?.port,
-            password: cfg?.password,
-            db: cfg?.db,
-          },
-        };
-      },
-      inject: [ConfigService],
-    }),
+    BullModule.forRoot(bullConfig),
     BullModule.registerQueue({
-      name: 'user-welcome',
+      name: QUEUE_NAMES.EMAIL,
     }),
-    EmailModule,
   ],
-  // providers: [EmailService], // Removed, now provided by EmailModule
+  providers: [QueueService],
+  exports: [BullModule, QueueService],
 })
 export class QueueModule {}

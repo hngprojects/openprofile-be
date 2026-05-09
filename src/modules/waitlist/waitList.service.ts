@@ -2,14 +2,16 @@ import { Injectable } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 
-import { WaitList } from './entities/waitList.entity.js';
-import { WaitListModelAction } from './actions/waitList.action.js';
+import { WaitList } from './entities/waitList.entity';
+import { WaitListModelAction } from './actions/waitList.action';
+import { QUEUE_JOB_NAMES } from '../queue/config/queue-names.constant';
 
 @Injectable()
 export class WaitListService {
   constructor(
     private readonly waitListModelAction: WaitListModelAction,
-    @InjectQueue('waitlist-email') private readonly waitListEmailQueue: Queue,
+    @InjectQueue(QUEUE_JOB_NAMES.EMAIL.WAITLIST)
+    private readonly waitListEmailQueue: Queue,
   ) {}
 
   async addToWaitlist(email: string): Promise<WaitList> {

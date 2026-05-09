@@ -6,6 +6,7 @@ import compression from 'compression';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { env } from './config/env';
+import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -14,6 +15,7 @@ async function bootstrap() {
 
   app.use(helmet());
   app.use(compression());
+  app.use(cookieParser());
   app.enableCors({
     origin: env.CORS_ORIGIN === '*' ? true : env.CORS_ORIGIN.split(','),
     credentials: true,
@@ -27,6 +29,7 @@ async function bootstrap() {
       .setTitle('OpenProfile BE')
       .setDescription('REST API documentation')
       .setVersion('1.0.0')
+      .addServer(`http://localhost:${env.PORT}`)
       .addBearerAuth(
         { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
         'JWT',
