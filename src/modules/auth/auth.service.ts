@@ -25,6 +25,8 @@ import {
 } from '../queue/config/queue-names.constant';
 import { PasswordChangedEmailData } from '../mail/interfaces/password-changed-email.interface';
 import { ResetPasswordEmailData } from '../mail/interfaces/reset-password-email.interface';
+import { GoogleUser } from './interfaces/google.interface';
+import { AuthProvider } from '../users/entities/user.entity';
 
 const FORGOT_PASSWORD_GENERIC_MSG =
   'If an account exists for this email, a reset link has been sent.';
@@ -36,6 +38,11 @@ export interface AuthTokens {
 
 export interface AuthResponse extends AuthTokens {
   user: Omit<User, 'password' | 'refreshTokenHash' | 'deletedAt'>;
+}
+
+export interface GoogleAuthResponse extends AuthTokens {
+  user: Omit<User, 'password' | 'refreshTokenHash' | 'deletedAt'>;
+  isNewUser: boolean;
 }
 
 @Injectable()
@@ -213,5 +220,82 @@ export class AuthService {
   ): Promise<void> {
     const hash = await bcrypt.hash(refreshToken, 10);
     await this.usersService.setRefreshTokenHash(userId, hash);
+  }
+
+  async validateGoogleUser(
+    googleUser: GoogleUser,
+  ): Promise<{ user: User; isNewUser: boolean }> {
+    let user = await this.usersService.findByEmail(googleUser.email);
+    let isNewUser = false;
+
+    if (user) {
+      /**
+       * Link google account if not already linked (email account exists)
+       */
+      if (user.authProvider === AuthProvider.EMAIL) {
+        await this.usersService.linkGoogleAccount(user.id);
+        user = await this.usersService.findOne(user.id);
+      }
+
+      return { user, isNewUser };
+    }
+
+    /**
+     * If user does not exist, create a new Google user with is_verified = true and onboardingComplete = false
+     */
+    const created = await this.usersService.createGoogleUser({
+      email: googleUser.email,
+      fullName: googleUser.fullName,
+      isVerified: true,
+      onboardingComplete: false,
+    });
+
+    isNewUser = true;
+    return { user: created, isNewUser };
+  }
+
+  async loginGoogle(
+    user: User,
+    ipAddress: string,
+  ): Promise<GoogleAuthResponse> {
+    /**
+     * Log the OAuth login with timestamp, IP, and user ID
+     */
+    this.usersService.logOAuthLogin(user.id, ipAddress, 'google');
+
+    /**
+     * Generate tokens with full payload: sub, email, role, onboardingComplete
+     */
+    const tokens = await this.signGoogleTokens(user);
+    await this.persistRefreshToken(user.id, tokens.refreshToken);
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password, refreshTokenHash, deletedAt, ...safeUser } = user;
+
+    return {
+      ...tokens,
+      user: safeUser,
+      isNewUser: !user.onboardingComplete,
+    };
+  }
+
+  private async signGoogleTokens(user: User): Promise<AuthTokens> {
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      onboardingComplete: user.onboardingComplete,
+    };
+    const [accessToken, refreshToken] = await Promise.all([
+      this.jwtService.signAsync(payload, {
+        secret: env.JWT_ACCESS_SECRET,
+        expiresIn: env.JWT_ACCESS_EXPIRES_IN as StringValue,
+      }),
+      this.jwtService.signAsync(payload, {
+        secret: env.JWT_REFRESH_SECRET,
+        expiresIn: env.JWT_REFRESH_EXPIRES_IN as StringValue,
+      }),
+    ]);
+    return { accessToken, refreshToken };
   }
 }

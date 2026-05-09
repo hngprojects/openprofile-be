@@ -55,8 +55,14 @@ export const env = createEnv({
       .transform((v) => v === true || v === 'true')
       .optional(),
     APP_URL: z.string().url().optional(),
+    FRONTEND_URL: z.string().url(),
     REDIS_URL: z.string().min(1).optional(),
-    RESEND_API_KEY: z.string().min(1).optional(),
+    CLIENT_ID: z.string().min(1),
+    CLIENT_SECRET: z.string().min(1),
+    GOOGLE_CALLBACK_URL: z
+      .string()
+      .url()
+      .default('http://localhost:3000/auth/google/callback'),
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,

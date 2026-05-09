@@ -6,6 +6,7 @@ import compression from 'compression';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { env } from './config/env';
+import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -14,8 +15,9 @@ async function bootstrap() {
 
   app.use(helmet());
   app.use(compression());
+  app.use(cookieParser());
   app.enableCors({
-    origin: env.CORS_ORIGIN === '*' ? true : (env.CORS_ORIGIN as string).split(','),
+    origin: env.CORS_ORIGIN === '*' ? true : env.CORS_ORIGIN.split(','),
     credentials: true,
   });
   app.setGlobalPrefix('api', { exclude: ['health'] });
@@ -27,6 +29,7 @@ async function bootstrap() {
       .setTitle('OpenProfile BE')
       .setDescription('REST API documentation')
       .setVersion('1.0.0')
+      .addServer(`http://localhost:${env.PORT}`)
       .addBearerAuth(
         { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
         'JWT',
@@ -38,12 +41,12 @@ async function bootstrap() {
     });
   }
 
-  await app.listen(env.PORT as number);
+  await app.listen(env.PORT);
 
   const logger = new Logger('Bootstrap');
-  logger.log(`Application running on http://localhost:${env.PORT as number}`);
-  if (env.SWAGGER_ENABLED as boolean) {
-    logger.log(`Swagger docs at http://localhost:${env.PORT as number}/docs`);
+  logger.log(`Application running on http://localhost:${env.PORT}`);
+  if (env.SWAGGER_ENABLED) {
+    logger.log(`Swagger docs at http://localhost:${env.PORT}/docs`);
   }
 }
 

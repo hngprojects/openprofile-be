@@ -41,7 +41,11 @@ jobs:
       MAIL_USER: test@test.com
       MAIL_PASS: some-password
       MAIL_FROM: 'test@test.com'
+      FRONTEND_URL: localhost:5000
       MAIL_SECURE: true
+      CLIENT_ID: your_client_id
+      CLIENT_SECRET: your client secret
+      GOOGLE_CALLBACK_URL: http://localhost:3000/auth/google/callback
 
     steps:
       - name: Checkout code
