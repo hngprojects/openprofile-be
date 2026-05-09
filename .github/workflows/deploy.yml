@@ -114,7 +114,7 @@ jobs:
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
             cd /var/www/openprofile-be/staging
-            cp .env.staging  staging/.env
+            cp envfile/.env.staging  staging/.env
 
       - name: Install dependencies and build
         uses: appleboy/ssh-action@v1.0.3
@@ -176,7 +176,7 @@ jobs:
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
             cd /var/www/openprofile-be/main
-            cp .env.prod  main/.env
+            cp envfile/.env.prod  main/.env
 
       - name: Install dependencies and build
         uses: appleboy/ssh-action@v1.0.3
