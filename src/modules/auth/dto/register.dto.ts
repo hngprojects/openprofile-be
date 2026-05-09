@@ -10,7 +10,6 @@ import {
 import { Transform } from 'class-transformer';
 
 export class RegisterDto {
- 
   @ApiProperty({ example: 'user@example.com' })
   @IsNotEmpty({ message: 'Email address is required.' })
   @IsEmail({}, { message: 'Please enter a valid email address.' })
@@ -27,15 +26,16 @@ export class RegisterDto {
     maxLength: 128,
   })
   @IsNotEmpty({ message: 'Password is required.' })
-  @IsString({ message: 'Password is required.' })
+  @IsString({ message: 'Password must be a string.' })
   @MinLength(8, {
-    message:
-      'Password must be at least 8 characters and include one uppercase letter, one number, and one special character.',
+    message: 'Password must be at least 8 characters long.',
   })
-  @MaxLength(128, { message: 'Password must be at most 128 characters.' })
+  @MaxLength(128, {
+    message: 'Password must be at most 128 characters long.',
+  })
   @Matches(/^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/, {
     message:
-      'Password must be at least 8 characters and include one uppercase letter, one number, and one special character.',
+      'Password must include at least one uppercase letter, one number, and one special character.',
   })
   password: string;
 
@@ -44,6 +44,8 @@ export class RegisterDto {
   @IsNotEmpty({ message: 'Full name is required' })
   @MinLength(1, { message: 'Full name is required' })
   @MaxLength(255, { message: 'Full name must not be more than 255 characters' })
-  @Transform(({value}: {value: unknown}) => typeof value === 'string' ? value.trim() : value )
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
   fullName: string;
 }
