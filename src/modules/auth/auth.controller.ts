@@ -16,6 +16,7 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ResendOtpDto } from './dto/resend-otp.dto';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -76,4 +77,10 @@ export class AuthController {
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
   }
+  @Post('resend-otp')
+  @Public()
+  async resendOtp(@Body() dto: ResendOtpDto) {
+    return this.authService.resendOtp(dto.email);
+  }
 }
+

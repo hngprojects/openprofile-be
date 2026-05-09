@@ -45,6 +45,7 @@
     "@nestjs/typeorm": "^11.0.1",
     "@t3-oss/env-core": "^0.13.11",
     "@types/nodemailer": "^8.0.0",
+    "argon2": "^0.44.0",
     "bcrypt": "^6.0.0",
     "bullmq": "^5.76.6",
     "class-transformer": "^0.5.1",

@@ -9,6 +9,7 @@ export const QUEUE_JOB_NAMES = {
     SEND_PASSWORD_RESET: 'send-password-reset',
     VERIFY_EMAIL: 'verify-email',
     WAITLIST: 'waitlist',
+    SEND_OTP: 'send-otp',
   },
 } as const;
 

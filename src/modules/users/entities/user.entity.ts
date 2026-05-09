@@ -37,6 +37,14 @@ export class User {
   @ApiProperty({ enum: UserRole, default: UserRole.USER })
   @Column({ type: 'enum', enum: UserRole, default: UserRole.USER })
   role: UserRole;
+  @Column({ nullable: true })
+  otp_hash?: string;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  otp_expires_at?: Date;
+
+  @Column({ default: false })
+  is_verified: boolean;
 
   @Exclude()
   @Column({
@@ -58,4 +66,10 @@ export class User {
   @Exclude()
   @DeleteDateColumn({ name: 'deleted_at' })
   deletedAt: Date | null;
+
+@Column({ nullable: true })
+otp: string;
+
+@Column({ type: 'timestamp', nullable: true })
+otpExpiresAt: Date;
 }
