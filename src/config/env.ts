@@ -43,17 +43,6 @@ export const env = createEnv({
       .union([z.boolean(), z.enum(['true', 'false'])])
       .default(true)
       .transform((v) => v === true || v === 'true'),
-
-    MAIL_HOST: z.string().min(1).optional(),
-    MAIL_PORT: z.coerce.number().int().positive().default(587),
-    MAIL_USER: z.string().min(1).optional(),
-    MAIL_PASS: z.string().min(1).optional(),
-    MAIL_FROM: z.string().min(1).optional(),
-    MAIL_SECURE: z
-      .union([z.boolean(), z.enum(['true', 'false'])])
-      .default(false)
-      .transform((v) => v === true || v === 'true')
-      .optional(),
     APP_URL: z.string().url().optional(),
     FRONTEND_URL: z.string().url(),
     REDIS_URL: z.string().min(1).optional(),
@@ -63,6 +52,8 @@ export const env = createEnv({
       .string()
       .url()
       .default('http://localhost:3000/auth/google/callback'),
+    RESEND_API_KEY: z.string().min(1),
+    MAIL_FROM: z.string().min(1),
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,
