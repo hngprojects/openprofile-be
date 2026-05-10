@@ -244,4 +244,15 @@ export class UsersService {
       `OAuth login: userId=${userId} provider=${provider} ip=${ipAddress} time=${new Date().toISOString()}`,
     );
   }
+
+  async findLatestActiveByUserId(
+    userId: string,
+  ): Promise<ResetPassword | null> {
+    return this.resetPasswordAction.findLatestActiveByUserId(userId);
+  }
+
+  // Invalidates ALL active tokens for a user before issuing a new one
+  async invalidateAllByUserId(userId: string): Promise<void> {
+    await this.resetPasswordAction.invalidateAllByUserId(userId);
+  }
 }
