@@ -51,12 +51,10 @@ jobs:
       JWT_ACCESS_SECRET: ci-only-access-secret-minimum-32-chars
       JWT_REFRESH_SECRET: ci-only-refresh-secret-minimum-32-chars
       APP_URL: http://localhost:3000
-      MAIL_HOST: smtp.gmail.com
       MAIL_PORT: 465
-      MAIL_USER: test@test.com
-      MAIL_PASS: test-password
       MAIL_FROM: test@test.com
       MAIL_SECURE: true
+      RESEND_API_KEY: some-api-key
       FRONTEND_URL: http://localhost:3000
       CLIENT_ID: test-client-id
       CLIENT_SECRET: test-client-secret
