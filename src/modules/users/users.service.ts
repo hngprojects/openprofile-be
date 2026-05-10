@@ -92,6 +92,11 @@ export class UsersService {
     });
   }
 
+  async markOnboardingComplete(id: string): Promise<void> {
+    const user = await this.findOne(id);
+    user.onboardingComplete = true;
+  }
+
   async setRefreshTokenHash(id: string, hash: string | null): Promise<void> {
     await this.userModelAction.update({
       ...NO_TRANSACTION,
@@ -139,7 +144,7 @@ export class UsersService {
   }
 
   async updatePassword(id: string, newPassword: string): Promise<void> {
-        const passwordHash = await argon2.hash(newPassword);
+    const passwordHash = await argon2.hash(newPassword);
     await this.userModelAction.update({
       ...NO_TRANSACTION,
       identifierOptions: { id },

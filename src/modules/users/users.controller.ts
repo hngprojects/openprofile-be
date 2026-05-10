@@ -53,4 +53,10 @@ export class UsersController {
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.usersService.remove(id);
   }
+
+  @Post(':id/onboarding-complete')
+  @ApiOperation({ summary: 'Mark a user onboarding complete' })
+  markOnboardingComplete(@Param('id', ParseUUIDPipe) id: string) {
+    return this.usersService.markOnboardingComplete(id);
+  }
 }
