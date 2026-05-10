@@ -304,7 +304,8 @@ export class AuthService {
   async forgotPassword(
     dto: ForgotPasswordDto,
   ): Promise<Record<string, string>> {
-    const rateLimitKey = `forgot-password:${dto.email}`;
+    const lowercasedEmail = dto.email.toLowerCase();
+    const rateLimitKey = `forgot-password:${lowercasedEmail}`;
     const allowed = await this.rateLimiterService.isAllowed(
       rateLimitKey,
       3,
@@ -318,7 +319,7 @@ export class AuthService {
       );
     }
 
-    const user = await this.usersService.findByEmail(dto.email);
+    const user = await this.usersService.findByEmail(lowercasedEmail);
 
     if (user && user.password) {
       await this.issueResetToken(user);
