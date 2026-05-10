@@ -36,10 +36,7 @@ jobs:
       REDIS_URL: redis://localhost:6379
       APP_URL: http://localhost:3000/
 
-      MAIL_HOST: smtp.gmail.com
-      MAIL_PORT: 465
-      MAIL_USER: test@test.com
-      MAIL_PASS: some-password
+      RESEND_API_KEY: your_resend_api_key
       MAIL_FROM: 'test@test.com'
       FRONTEND_URL: localhost:5000
       MAIL_SECURE: true

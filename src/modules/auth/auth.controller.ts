@@ -98,7 +98,11 @@ export class AuthController {
   @Public()
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
-  @UsePipes(new ValidationPipe({ errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY }))
+  @UsePipes(
+    new ValidationPipe({
+      errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+    }),
+  )
   @ApiOperation({ summary: 'Request a password reset email' })
   forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.authService.forgotPassword(dto);
@@ -107,7 +111,11 @@ export class AuthController {
   @Public()
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
-  @UsePipes(new ValidationPipe({ errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY }))
+  @UsePipes(
+    new ValidationPipe({
+      errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+    }),
+  )
   @ApiOperation({ summary: 'Reset password using token from email' })
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
@@ -143,6 +151,7 @@ export class AuthController {
     },
   })
   @UseGuards(ThrottlerGuard, GoogleAuthGuard)
+  @ApiOperation({ summary: 'Google login endpoint' })
   googleAuth() {}
 
   @Public()
@@ -154,6 +163,7 @@ export class AuthController {
     },
   })
   @UseGuards(ThrottlerGuard, GoogleAuthGuard)
+  @ApiOperation({ summary: 'Google callback endpoint' })
   async googleCallback(@Req() req: GoogleAuthRequest, @Res() res: Response) {
     try {
       /**

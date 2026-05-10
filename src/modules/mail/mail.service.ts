@@ -1,45 +1,22 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Inject } from '@nestjs/common';
-import type { ConfigType } from '@nestjs/config';
-import * as dns from 'dns';
-import * as nodemailer from 'nodemailer';
-import { mailConfig } from './config/mail.config';
+import { env } from '../../config/env';
 import { renderVerificationOtpEmail } from './verifcation-otp.template';
+import { Resend } from 'resend';
 
 export const OTP_EMAIL_SUBJECT = 'Verify your Open Profile account';
 
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
-  private readonly transporter: nodemailer.Transporter;
+  private readonly resend: Resend;
 
-  constructor(
-    @Inject(mailConfig.KEY)
-    private readonly mail: ConfigType<typeof mailConfig>,
-  ) {
-    this.transporter = nodemailer.createTransport({
-      host: this.mail.host,
-      port: this.mail.port,
-      secure: this.mail.secure,
-      auth: {
-        user: this.mail.user,
-        pass: this.mail.pass,
-      },
-      dnsLookup: (
-        hostname: string,
-        options: { family?: number },
-        callback: (
-          err: NodeJS.ErrnoException | null,
-          address: string,
-          family: number,
-        ) => void,
-      ) => dns.lookup(hostname, { ...options, family: 4 }, callback),
-    } as nodemailer.TransportOptions);
+  constructor() {
+    this.resend = new Resend(env.RESEND_API_KEY);
   }
 
   async sendEmail(to: string, subject: string, html: string): Promise<void> {
-    await this.transporter.sendMail({
-      from: this.mail.from,
+    await this.resend.emails.send({
+      from: env.MAIL_FROM,
       to,
       subject,
       html,
@@ -55,7 +32,8 @@ export class MailService {
   ): Promise<void> {
     this.logger.log(`Sending OTP email to ${toEmail}`);
 
-    await this.transporter.sendMail({
+    await this.resend.emails.send({
+      from: env.MAIL_FROM,
       to: toEmail,
       subject: OTP_EMAIL_SUBJECT,
       html: renderVerificationOtpEmail(fullName, otp),
