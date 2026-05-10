@@ -28,6 +28,7 @@ import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { setAuthCookies } from './utils/cookie.utils';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import type { GoogleAuthRequest } from './interfaces/google.interface';
+import { ResendOtpDto } from './dto/resend-otp.dto';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -195,5 +196,12 @@ export class AuthController {
       const errorUrl = `${env.FRONTEND_URL}/auth?error=AUTH_FAILED&message=Google%20authentication%20failed.%20Please%20try%20again.`;
       res.redirect(302, errorUrl);
     }
+  }
+
+  @Public()
+  @Post('resend-otp')
+  @HttpCode(HttpStatus.OK)
+  async resendOtp(@Body() dto: ResendOtpDto) {
+    return this.authService.resendOtp(dto.email);
   }
 }

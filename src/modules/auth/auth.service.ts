@@ -304,7 +304,8 @@ export class AuthService {
   async forgotPassword(
     dto: ForgotPasswordDto,
   ): Promise<Record<string, string>> {
-    const rateLimitKey = `forgot-password:${dto.email}`;
+    const lowercasedEmail = dto.email.toLowerCase();
+    const rateLimitKey = `forgot-password:${lowercasedEmail}`;
     const allowed = await this.rateLimiterService.isAllowed(
       rateLimitKey,
       3,
@@ -318,34 +319,10 @@ export class AuthService {
       );
     }
 
-    const user = await this.usersService.findByEmail(dto.email);
+    const user = await this.usersService.findByEmail(lowercasedEmail);
 
     if (user && user.password) {
-      const rawToken = crypto.randomBytes(32).toString('hex');
-      const tokenSelector = crypto
-        .createHash('sha256')
-        .update(rawToken)
-        .digest('hex');
-      const tokenHash = await argon2.hash(rawToken);
-      const expires = new Date(Date.now() + 60 * 60 * 1000);
-
-      await this.usersService.setPasswordResetToken(
-        user.id,
-        tokenSelector,
-        tokenHash,
-        expires,
-      );
-
-      const payload: ResetPasswordEmailData = {
-        to: user.email,
-        resetLink: `${env.FRONTEND_URL}/reset-password?token=${rawToken}`,
-      };
-
-      await this.queueService.addJob<ResetPasswordEmailData>(
-        QUEUE_NAMES.EMAIL,
-        QUEUE_JOB_NAMES.EMAIL.SEND_PASSWORD_RESET,
-        payload,
-      );
+      await this.issueResetToken(user);
     }
 
     return { status: 'success', message: FORGOT_PASSWORD_GENERIC_MSG };
@@ -621,5 +598,91 @@ export class AuthService {
       }),
     ]);
     return { accessToken, refreshToken };
+  }
+
+  async issueResetToken(user: User): Promise<void> {
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenSelector = crypto
+      .createHash('sha256')
+      .update(rawToken)
+      .digest('hex');
+    const tokenHash = await argon2.hash(rawToken);
+    const expires = new Date(Date.now() + 60 * 60 * 1000);
+
+    await this.usersService.setPasswordResetToken(
+      user.id,
+      tokenSelector,
+      tokenHash,
+      expires,
+    );
+
+    const payload: ResetPasswordEmailData = {
+      to: user.email,
+      resetLink: `${env.FRONTEND_URL}/reset-password?token=${rawToken}`,
+    };
+
+    await this.queueService.addJob<ResetPasswordEmailData>(
+      QUEUE_NAMES.EMAIL,
+      QUEUE_JOB_NAMES.EMAIL.SEND_PASSWORD_RESET,
+      payload,
+    );
+  }
+  async resendOtp(email: string): Promise<{ message: string }> {
+    const lowercasedEmail = email.toLowerCase();
+
+    const rateLimitKey = `resend-otp:${lowercasedEmail}`;
+    const allowed = await this.rateLimiterService.isAllowed(
+      rateLimitKey,
+      3,
+      3600,
+    );
+    const user = await this.usersService.findByEmail(lowercasedEmail);
+
+    if (!allowed) {
+      throw new HttpException(
+        'You have requested too many code.',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    // Prevent email enumeration
+    if (!user) {
+      return {
+        message: 'If the email exists, an OTP has been sent',
+      };
+    }
+    if (user.isVerified) {
+      this.logger.warn('Resend OTP requested for already-verified user', {
+        userId: user.id,
+      });
+
+      return {
+        message:
+          'If this email is registered, you will receive instructions shortly.',
+      };
+    }
+
+    // invalidate the otp
+
+    await this.usersService.clearOtp(user.id);
+
+    const otp = this.generateOtp();
+    const otpHash = await argon2.hash(otp);
+    const otpExpiresAt = new Date(Date.now() + OTP_TTL_MS);
+    await this.usersService.storeOtpHash(user.id, otpHash, otpExpiresAt);
+
+    await this.queueService.addJob(
+      QUEUE_NAMES.EMAIL,
+      QUEUE_JOB_NAMES.EMAIL.SEND_OTP,
+      {
+        to: user.email,
+        otp,
+        fullName: user.fullName,
+      },
+    );
+
+    return {
+      message: 'OTP has been sent successfully',
+    };
   }
 }
