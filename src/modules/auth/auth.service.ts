@@ -643,16 +643,10 @@ export class AuthService {
         }
       }
 
-      // 5. Invalidate ALL existing active tokens before issuing a new one.
-      //    Ensures only one valid token exists at any time.
-      //    Revokes any previously intercepted/leaked token the moment resend is called.
       await this.usersService.invalidateAllByUserId(user.id);
 
       await this.issueResetToken(user);
     }
-
-    // 7. Always return the same generic response whether the user exists or not.
-    //    Prevents email enumeration via response body differences.
 
     return { status: 'success', message: FORGOT_PASSWORD_GENERIC_MSG };
   }
