@@ -210,14 +210,13 @@ export class UsersService {
     });
   }
 
-  // Clears OTP fields without marking the account as verified — used for password reset flow.
   async clearOtpOnly(userId: string): Promise<void> {
-    await this.userModelAction.update({
-      ...NO_TRANSACTION,
-      identifierOptions: { id: userId },
-      updatePayload: { otpHash: null, otpExpiresAt: null },
-    });
-  }
+  await this.userModelAction.update({
+    ...NO_TRANSACTION,
+    identifierOptions: { id: userId },
+    updatePayload: { otpHash: null, otpExpiresAt: null },
+  });
+}
 
   async linkGoogleAccount(id: string): Promise<void> {
     await this.userModelAction.update({
@@ -249,7 +248,6 @@ export class UsersService {
     });
   }
 
-  
   logOAuthLogin(userId: string, ipAddress: string, provider: string): void {
     console.log(
       `OAuth login: userId=${userId} provider=${provider} ip=${ipAddress} time=${new Date().toISOString()}`,
