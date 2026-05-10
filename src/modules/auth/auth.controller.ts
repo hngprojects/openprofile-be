@@ -24,6 +24,7 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { VerifyResetOtpDto } from './dto/verify-reset-otp.dto';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { setAuthCookies } from './utils/cookie.utils';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
@@ -110,6 +111,21 @@ export class AuthController {
   }
 
   @Public()
+  @Post('verify-reset-otp')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @UseGuards(ThrottlerGuard)
+  @UsePipes(
+    new ValidationPipe({
+      errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+    }),
+  )
+  @ApiOperation({ summary: 'Verify password reset OTP and receive a reset token' })
+  verifyResetOtp(@Body() dto: VerifyResetOtpDto) {
+    return this.authService.verifyResetOtp(dto);
+  }
+
+  @Public()
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
   @UsePipes(
@@ -117,7 +133,7 @@ export class AuthController {
       errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
     }),
   )
-  @ApiOperation({ summary: 'Reset password using token from email' })
+  @ApiOperation({ summary: 'Reset password using reset token from verify-reset-otp' })
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
   }

@@ -22,6 +22,7 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { VerifyResetOtpDto } from './dto/verify-reset-otp.dto';
 import { JwtPayload } from './strategies/jwt.strategy';
 import { QueueService } from '../queue/queue.service';
 import { MailService } from '../mail/mail.service';
@@ -32,13 +33,12 @@ import {
   QUEUE_NAMES,
 } from '../queue/config/queue-names.constant';
 import { PasswordChangedEmailData } from '../mail/interfaces/password-changed-email.interface';
-import { ResetPasswordEmailData } from '../mail/interfaces/reset-password-email.interface';
 import { AccountLockedEmailData } from '../mail/interfaces/account-locked-email.interface';
 import { NewIpLoginEmailData } from '../mail/interfaces/new-ip-login-email.interface';
 import { GoogleUser } from './interfaces/google.interface';
 
 const FORGOT_PASSWORD_GENERIC_MSG =
-  'If an account exists for this email, a reset link has been sent.';
+  'If an account exists for this email, a verification code has been sent.';
 
 export interface AuthTokens {
   accessToken: string;
@@ -314,74 +314,120 @@ export class AuthService {
 
     if (!allowed) {
       throw new HttpException(
-        'You have requested too many reset links. Please wait 60 minutes before trying again.',
+        'You have requested too many codes. Please wait 60 minutes before trying again.',
         HttpStatus.TOO_MANY_REQUESTS,
       );
     }
 
     const user = await this.usersService.findByEmail(lowercasedEmail);
 
-    if (user && user.password) {
-      await this.issueResetToken(user);
+    // Only generate OTP for email-based accounts. Google OAuth users have no local
+    // password to reset, and we must not reveal their auth provider to the caller.
+    if (user && user.authProvider === AuthProvider.EMAIL) {
+      const otp = this.generateOtp();
+      const otpHash = await argon2.hash(otp);
+      const otpExpiresAt = new Date(Date.now() + OTP_TTL_MS);
+
+      // Overwrites any existing OTP, invalidating previous codes immediately.
+      await this.usersService.storeOtpHash(user.id, otpHash, otpExpiresAt);
+
+      try {
+        await this.mailService.sendPasswordResetOtp(user.email, otp);
+      } catch (err) {
+        // Log the delivery failure but do not surface it — the generic response
+        // must be returned regardless to avoid leaking whether the email exists.
+        this.logger.error(
+          `Failed to send password reset OTP to ${user.email}`,
+          err instanceof Error ? err.stack : err,
+        );
+      }
     }
 
+    // Always return the same response whether the email exists or not,
+    // to prevent user enumeration.
     return { status: 'success', message: FORGOT_PASSWORD_GENERIC_MSG };
   }
 
-  async resetPassword(dto: ResetPasswordDto): Promise<Record<string, string>> {
-    const tokenSelector = crypto
-      .createHash('sha256')
-      .update(dto.token)
-      .digest('hex');
-    const resetRecord =
-      await this.usersService.findResetTokenBySelector(tokenSelector);
+  async verifyResetOtp(
+    dto: VerifyResetOtpDto,
+  ): Promise<{ status: string; resetToken: string }> {
+    const email = dto.email.toLowerCase();
+    const attemptsKey = `reset-otp-attempts:${email}`;
 
-    if (!resetRecord) {
-      throw new HttpException(
-        {
-          errorCode: 'TOKEN_INVALID',
-          message: 'This reset link is invalid. Please request a new one.',
-        },
-        HttpStatus.BAD_REQUEST,
-      );
+    const user = await this.usersService.findByEmail(email);
+
+    if (!user || !user.otpHash || !user.otpExpiresAt) {
+      throw new BadRequestException({
+        errorCode: 'OTP_INVALID',
+        message: 'That code is incorrect or has expired. Please try again.',
+      });
     }
 
-    const isValid = await argon2.verify(resetRecord.tokenHash, dto.token);
+    if (new Date() > user.otpExpiresAt) {
+      throw new GoneException({
+        errorCode: 'OTP_EXPIRED',
+        message: 'Your verification code has expired. Please request a new one.',
+      });
+    }
+
+    const isValid = await argon2.verify(user.otpHash, dto.otp);
     if (!isValid) {
+      // Invalidate the OTP after too many wrong attempts to prevent brute force.
+      const attempts = await this.redisService.increment(attemptsKey, OTP_TTL_MS / 1000);
+      if (attempts >= BRUTE_MAX_ATTEMPTS) {
+        await this.usersService.clearOtpOnly(user.id);
+        await this.redisService.del(attemptsKey);
+      }
+      throw new BadRequestException({
+        errorCode: 'OTP_INVALID',
+        message: 'That code is incorrect or has expired. Please try again.',
+      });
+    }
+
+    await this.redisService.del(attemptsKey);
+    // Clear the OTP and mark the account as verified — receiving the OTP proves email ownership.
+    await this.usersService.clearOtp(user.id);
+
+    // Signed with a dedicated secret so reset tokens cannot be used as access tokens.
+    const resetToken = await this.jwtService.signAsync(
+      { sub: user.id, purpose: 'password_reset' },
+      { secret: env.JWT_RESET_SECRET, expiresIn: '10m' },
+    );
+
+    return { status: 'success', resetToken };
+  }
+
+  async resetPassword(dto: ResetPasswordDto): Promise<Record<string, string>> {
+    let payload: { sub: string; purpose: string };
+
+    try {
+      payload = await this.jwtService.verifyAsync(dto.resetToken, {
+        secret: env.JWT_RESET_SECRET,
+      });
+    } catch {
       throw new HttpException(
         {
           errorCode: 'TOKEN_INVALID',
-          message: 'This reset link is invalid. Please request a new one.',
+          message: 'This reset token is invalid or has expired. Please start over.',
         },
         HttpStatus.BAD_REQUEST,
       );
     }
 
-    if (new Date() > resetRecord.expiresAt) {
+    // Guard against tokens signed with a different secret or purpose.
+    if (payload.purpose !== 'password_reset') {
       throw new HttpException(
         {
-          errorCode: 'TOKEN_EXPIRED',
-          message:
-            'This reset link has expired. Please request a new password reset link.',
-        },
-        HttpStatus.GONE,
-      );
-    }
-
-    if (resetRecord.used) {
-      throw new HttpException(
-        {
-          errorCode: 'TOKEN_USED',
-          message:
-            'This reset link has already been used. Please request a new one.',
+          errorCode: 'TOKEN_INVALID',
+          message: 'This reset token is invalid or has expired. Please start over.',
         },
         HttpStatus.BAD_REQUEST,
       );
     }
 
-    const user = await this.usersService.findOne(resetRecord.userId);
+    const user = await this.usersService.findOne(payload.sub);
     await this.usersService.updatePassword(user.id, dto.newPassword);
-    await this.usersService.markPasswordResetAsUsed(resetRecord.id);
+    // Invalidate all existing sessions after password change.
     await this.usersService.setRefreshTokenHash(user.id, null);
 
     await this.queueService.addJob<PasswordChangedEmailData>(
@@ -392,8 +438,7 @@ export class AuthService {
 
     return {
       status: 'success',
-      message:
-        'Your password has been updated. Please log in with your new password.',
+      message: 'Your password has been updated. Please log in with your new password.',
     };
   }
 
@@ -600,33 +645,6 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  async issueResetToken(user: User): Promise<void> {
-    const rawToken = crypto.randomBytes(32).toString('hex');
-    const tokenSelector = crypto
-      .createHash('sha256')
-      .update(rawToken)
-      .digest('hex');
-    const tokenHash = await argon2.hash(rawToken);
-    const expires = new Date(Date.now() + 60 * 60 * 1000);
-
-    await this.usersService.setPasswordResetToken(
-      user.id,
-      tokenSelector,
-      tokenHash,
-      expires,
-    );
-
-    const payload: ResetPasswordEmailData = {
-      to: user.email,
-      resetLink: `${env.FRONTEND_URL}/reset-password?token=${rawToken}`,
-    };
-
-    await this.queueService.addJob<ResetPasswordEmailData>(
-      QUEUE_NAMES.EMAIL,
-      QUEUE_JOB_NAMES.EMAIL.SEND_PASSWORD_RESET,
-      payload,
-    );
-  }
   async resendOtp(email: string): Promise<{ message: string }> {
     const lowercasedEmail = email.toLowerCase();
 
