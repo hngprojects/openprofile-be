@@ -16,6 +16,8 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { PaginationDto } from './dto/pagination.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersService } from './users.service';
+import { Public } from '../../common/decorators/public.decorator';
+import { SearchQueryDto } from './dto/search-query.dto';
 
 @ApiTags('users')
 @ApiBearerAuth()
@@ -33,6 +35,14 @@ export class UsersController {
   @ApiOperation({ summary: 'List users (paginated)' })
   findAll(@Query() pagination: PaginationDto) {
     return this.usersService.findAll(pagination);
+  }
+
+  // Public endpoint for searching users
+  @Get('search')
+  @Public()
+  @ApiOperation({ summary: 'Search users by name' })
+  search(@Query() dto: SearchQueryDto) {
+    return this.usersService.search(dto);
   }
 
   @Get(':id')

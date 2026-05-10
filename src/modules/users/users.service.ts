@@ -14,6 +14,7 @@ import { PaginationDto } from './dto/pagination.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { AuthProvider, User } from './entities/user.entity';
 import { ResetPassword } from '../auth/entities/reset-password.entity';
+import { SearchQueryDto } from './dto/search-query.dto';
 
 const NO_TRANSACTION = {
   transactionOptions: { useTransaction: false as const },
@@ -264,4 +265,57 @@ export class UsersService {
   async invalidateAllByUserId(userId: string): Promise<void> {
     await this.resetPasswordAction.invalidateAllByUserId(userId);
   }
+  // Implement the search method
+  async search(dto: SearchQueryDto) {
+  const { q, page = 1, limit = 20, verified, role, sort = 'az' } = dto;
+
+  const qb = this.userModelAction
+    .createQueryBuilder('u')
+    .where('u.fullName ILIKE :q', { q: `%${q}%` })
+    .andWhere('u.deletedAt IS NULL');
+
+  if (verified !== undefined) {
+    qb.andWhere('u.isVerified = :verified', { verified });
+  }
+
+  if (role) {
+    qb.andWhere('u.role = :role', { role });
+  }
+
+  switch (sort) {
+    case 'newest':
+      qb.orderBy('u.createdAt', 'DESC');
+      break;
+    case 'oldest':
+      qb.orderBy('u.createdAt', 'ASC');
+      break;
+    case 'za':
+      qb.orderBy('u.fullName', 'DESC');
+      break;
+    default:
+      qb.orderBy('u.fullName', 'ASC');
+  }
+
+  const total = await qb.getCount();
+
+  qb.skip((page - 1) * limit).take(limit);
+
+  const users = await qb.getMany();
+
+  return {
+    payload: users.map(({ id, fullName, role, isVerified, createdAt }) => ({
+      id,
+      fullName,
+      role,
+      isVerified,
+      createdAt,
+    })),
+    paginationMeta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+}
 }
