@@ -16,9 +16,10 @@ import { UserRole } from '../entities/user.entity';
 
 export class SearchQueryDto {
   @ApiProperty({ description: 'Search term (2–100 chars)', minLength: 2, maxLength: 100 })
-  @Transform(({ value }) =>
+@Transform(
+  ({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim() : value,
-  )
+)
   @IsString()
   @MinLength(2)
   @MaxLength(100)
