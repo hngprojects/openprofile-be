@@ -209,6 +209,15 @@ export class UsersService {
     });
   }
 
+  // Clears OTP fields without marking the account as verified — used for password reset flow.
+  async clearOtpOnly(userId: string): Promise<void> {
+    await this.userModelAction.update({
+      ...NO_TRANSACTION,
+      identifierOptions: { id: userId },
+      updatePayload: { otpHash: null, otpExpiresAt: null },
+    });
+  }
+
   async linkGoogleAccount(id: string): Promise<void> {
     await this.userModelAction.update({
       ...NO_TRANSACTION,
