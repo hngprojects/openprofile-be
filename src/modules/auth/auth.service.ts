@@ -630,14 +630,13 @@ export class AuthService {
   async resendOtp(email: string): Promise<{ message: string }> {
     const lowercasedEmail = email.toLowerCase();
 
-    const user = await this.usersService.findByEmail(lowercasedEmail);
-
     const rateLimitKey = `resend-otp:${lowercasedEmail}`;
     const allowed = await this.rateLimiterService.isAllowed(
       rateLimitKey,
       3,
       3600,
     );
+    const user = await this.usersService.findByEmail(lowercasedEmail);
 
     if (!allowed) {
       throw new HttpException(
