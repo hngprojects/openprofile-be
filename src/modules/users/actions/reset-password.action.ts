@@ -20,7 +20,9 @@ export class ResetPasswordModelAction extends AbstractModelAction<ResetPassword>
       .getOne();
   }
 
-  async findByValidSelector(tokenSelector: string): Promise<ResetPassword | null> {
+  async findByValidSelector(
+    tokenSelector: string,
+  ): Promise<ResetPassword | null> {
     return this.repo
       .createQueryBuilder('rp')
       .where('rp.tokenSelector = :tokenSelector', { tokenSelector })
@@ -49,5 +51,16 @@ export class ResetPasswordModelAction extends AbstractModelAction<ResetPassword>
 
   async deleteByUserId(userId: string): Promise<void> {
     await this.repo.delete({ userId });
+  }
+
+  // Invalidates ALL active tokens for a user before issuing a new one
+  async invalidateAllByUserId(userId: string): Promise<void> {
+    await this.repo
+      .createQueryBuilder()
+      .update(ResetPassword)
+      .set({ used: true })
+      .where('userId = :userId', { userId })
+      .andWhere('used = :used', { used: false }) // Only touch active tokens — avoids unnecessary writes
+      .execute();
   }
 }

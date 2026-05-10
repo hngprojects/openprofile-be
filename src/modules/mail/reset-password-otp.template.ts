@@ -42,7 +42,7 @@ export function renderPasswordResetOtpEmail(otp: string): string {
     </div>
     <div class="footer">
       <p>This is an automated message. Please do not reply directly to this email.</p>
-      <p>Open Profile · Your city, Your country</p>
+      <p>Open Profile</p>
     </div>
   </div>
 </body>

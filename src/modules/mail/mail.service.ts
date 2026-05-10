@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { env } from '../../config/env';
-import { renderVerificationOtpEmail } from './verifcation-otp.template';
+import { renderVerificationOtpEmail } from './verification-otp.template';
 import { renderPasswordResetOtpEmail } from './reset-password-otp.template';
 import { Resend } from 'resend';
 

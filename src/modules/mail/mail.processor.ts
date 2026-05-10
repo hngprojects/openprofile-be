@@ -1,6 +1,6 @@
 import { WorkerHost, OnWorkerEvent, Processor } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
-import { MailService } from './mail.service';
+import { MailService, OTP_EMAIL_SUBJECT } from './mail.service';
 import { Logger } from '@nestjs/common';
 import {
   QUEUE_NAMES,
@@ -11,6 +11,7 @@ import { PasswordChangedEmailData } from './interfaces/password-changed-email.in
 import { ResetPasswordEmailData } from './interfaces/reset-password-email.interface';
 import { AccountLockedEmailData } from './interfaces/account-locked-email.interface';
 import { NewIpLoginEmailData } from './interfaces/new-ip-login-email.interface';
+import { renderVerificationOtpEmail } from './verification-otp.template';
 
 @Processor(QUEUE_NAMES.EMAIL)
 export class MailProcessor extends WorkerHost {
@@ -40,6 +41,15 @@ export class MailProcessor extends WorkerHost {
 
       case QUEUE_JOB_NAMES.EMAIL.NEW_IP_LOGIN:
         await this.handleNewIpLoginEmail(job.data as NewIpLoginEmailData);
+        break;
+      case QUEUE_JOB_NAMES.EMAIL.SEND_OTP:
+        await this.handleResendOTP(
+          job.data as {
+            to: string;
+            otp: string;
+            fullName: string;
+          },
+        );
         break;
 
       default:
@@ -87,6 +97,16 @@ export class MailProcessor extends WorkerHost {
       <p>The Open Profile Team</p>
     `;
     await this.mailService.sendEmail(to, subject, html);
+  }
+
+  private async handleResendOTP(data: {
+    to: string;
+    otp: string;
+    fullName: string;
+  }) {
+    const html = renderVerificationOtpEmail(data.otp, data.fullName);
+
+    await this.mailService.sendEmail(data.to, OTP_EMAIL_SUBJECT, html);
   }
 
   @OnWorkerEvent('completed')

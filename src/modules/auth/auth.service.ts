@@ -304,7 +304,8 @@ export class AuthService {
   async forgotPassword(
     dto: ForgotPasswordDto,
   ): Promise<Record<string, string>> {
-    const rateLimitKey = `forgot-password:${dto.email}`;
+    const lowercasedEmail = dto.email.toLowerCase();
+    const rateLimitKey = `forgot-password:${lowercasedEmail}`;
     const allowed = await this.rateLimiterService.isAllowed(
       rateLimitKey,
       3,
@@ -318,7 +319,7 @@ export class AuthService {
       );
     }
 
-    const user = await this.usersService.findByEmail(dto.email);
+    const user = await this.usersService.findByEmail(lowercasedEmail);
 
     // Only generate OTP for email-based accounts. Google OAuth users have no local
     // password to reset, and we must not reveal their auth provider to the caller.
@@ -350,7 +351,10 @@ export class AuthService {
   async verifyResetOtp(
     dto: VerifyResetOtpDto,
   ): Promise<{ status: string; resetToken: string }> {
-    const user = await this.usersService.findByEmail(dto.email.toLowerCase());
+    const email = dto.email.toLowerCase();
+    const attemptsKey = `reset-otp-attempts:${email}`;
+
+    const user = await this.usersService.findByEmail(email);
 
     if (!user || !user.otpHash || !user.otpExpiresAt) {
       throw new BadRequestException({
@@ -368,20 +372,26 @@ export class AuthService {
 
     const isValid = await argon2.verify(user.otpHash, dto.otp);
     if (!isValid) {
+      // Invalidate the OTP after too many wrong attempts to prevent brute force.
+      const attempts = await this.redisService.increment(attemptsKey, OTP_TTL_MS / 1000);
+      if (attempts >= BRUTE_MAX_ATTEMPTS) {
+        await this.usersService.clearOtpOnly(user.id);
+        await this.redisService.del(attemptsKey);
+      }
       throw new BadRequestException({
         errorCode: 'OTP_INVALID',
         message: 'That code is incorrect or has expired. Please try again.',
       });
     }
 
+    await this.redisService.del(attemptsKey);
     // Clear the OTP and mark the account as verified — receiving the OTP proves email ownership.
     await this.usersService.clearOtp(user.id);
 
-    // Issue a short-lived reset token. The `purpose` claim prevents a regular
-    // access token from being accepted here.
+    // Signed with a dedicated secret so reset tokens cannot be used as access tokens.
     const resetToken = await this.jwtService.signAsync(
       { sub: user.id, purpose: 'password_reset' },
-      { secret: env.JWT_ACCESS_SECRET, expiresIn: '10m' },
+      { secret: env.JWT_RESET_SECRET, expiresIn: '10m' },
     );
 
     return { status: 'success', resetToken };
@@ -392,7 +402,7 @@ export class AuthService {
 
     try {
       payload = await this.jwtService.verifyAsync(dto.resetToken, {
-        secret: env.JWT_ACCESS_SECRET,
+        secret: env.JWT_RESET_SECRET,
       });
     } catch {
       throw new HttpException(
@@ -404,7 +414,7 @@ export class AuthService {
       );
     }
 
-    // Guard against a regular access token being passed in.
+    // Guard against tokens signed with a different secret or purpose.
     if (payload.purpose !== 'password_reset') {
       throw new HttpException(
         {
@@ -633,5 +643,91 @@ export class AuthService {
       }),
     ]);
     return { accessToken, refreshToken };
+  }
+
+  async issueResetToken(user: User): Promise<void> {
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenSelector = crypto
+      .createHash('sha256')
+      .update(rawToken)
+      .digest('hex');
+    const tokenHash = await argon2.hash(rawToken);
+    const expires = new Date(Date.now() + 60 * 60 * 1000);
+
+    await this.usersService.setPasswordResetToken(
+      user.id,
+      tokenSelector,
+      tokenHash,
+      expires,
+    );
+
+    const payload: ResetPasswordEmailData = {
+      to: user.email,
+      resetLink: `${env.FRONTEND_URL}/reset-password?token=${rawToken}`,
+    };
+
+    await this.queueService.addJob<ResetPasswordEmailData>(
+      QUEUE_NAMES.EMAIL,
+      QUEUE_JOB_NAMES.EMAIL.SEND_PASSWORD_RESET,
+      payload,
+    );
+  }
+  async resendOtp(email: string): Promise<{ message: string }> {
+    const lowercasedEmail = email.toLowerCase();
+
+    const rateLimitKey = `resend-otp:${lowercasedEmail}`;
+    const allowed = await this.rateLimiterService.isAllowed(
+      rateLimitKey,
+      3,
+      3600,
+    );
+    const user = await this.usersService.findByEmail(lowercasedEmail);
+
+    if (!allowed) {
+      throw new HttpException(
+        'You have requested too many code.',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    // Prevent email enumeration
+    if (!user) {
+      return {
+        message: 'If the email exists, an OTP has been sent',
+      };
+    }
+    if (user.isVerified) {
+      this.logger.warn('Resend OTP requested for already-verified user', {
+        userId: user.id,
+      });
+
+      return {
+        message:
+          'If this email is registered, you will receive instructions shortly.',
+      };
+    }
+
+    // invalidate the otp
+
+    await this.usersService.clearOtp(user.id);
+
+    const otp = this.generateOtp();
+    const otpHash = await argon2.hash(otp);
+    const otpExpiresAt = new Date(Date.now() + OTP_TTL_MS);
+    await this.usersService.storeOtpHash(user.id, otpHash, otpExpiresAt);
+
+    await this.queueService.addJob(
+      QUEUE_NAMES.EMAIL,
+      QUEUE_JOB_NAMES.EMAIL.SEND_OTP,
+      {
+        to: user.email,
+        otp,
+        fullName: user.fullName,
+      },
+    );
+
+    return {
+      message: 'OTP has been sent successfully',
+    };
   }
 }
