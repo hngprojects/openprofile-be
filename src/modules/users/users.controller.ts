@@ -38,12 +38,12 @@ export class UsersController {
   }
 
   // Public endpoint for searching users
-  @Get('search')
-  @Public()
-  @ApiOperation({ summary: 'Search users by name' })
-  search(@Query() dto: SearchQueryDto) {
-    return this.usersService.search(dto);
-  }
+@Get('search')
+@Public()
+@ApiOperation({ summary: 'Search users by name', security: [] })
+search(@Query() dto: SearchQueryDto) {
+  return this.usersService.search(dto);
+}
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a user by id' })
