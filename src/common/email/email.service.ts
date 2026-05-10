@@ -2,8 +2,6 @@ import SMTPTransport from 'nodemailer/lib/smtp-transport/index.js';
 import { Injectable, Logger } from '@nestjs/common';
 import { createTransport, Transporter } from 'nodemailer';
 import { env } from '../../config/env';
-
-import { env } from '../../config/env.js';
 import { renderTemplate } from './utils/template-renderer.js';
 
 interface EmailResult {
@@ -20,11 +18,11 @@ export class EmailService {
   constructor() {
     this.transporter = createTransport<SMTPTransport.SentMessageInfo>(
       new SMTPTransport({
-        host: env.SMTP_HOST,
+        host: env.MAIL_HOST,
 
-        port: env.SMTP_PORT,
+        port: env.MAIL_PORT,
 
-        secure: env.SMTP_PORT === 465,
+        secure: env.MAIL_PORT === 465,
 
         auth: {
           user: env.MAIL_USER,
@@ -40,7 +38,7 @@ export class EmailService {
     try {
       const info: SMTPTransport.SentMessageInfo =
         await this.transporter.sendMail({
-          from: `OpenProfile <${env.SMTP_FROM}>`,
+          from: `OpenProfile <${env.MAIL_FROM}>`,
 
           to,
 
@@ -77,7 +75,7 @@ export class EmailService {
     try {
       const info: SMTPTransport.SentMessageInfo =
         await this.transporter.sendMail({
-          from: `OpenProfile <${env.SMTP_FROM}>`,
+          from: `OpenProfile <${env.MAIL_FROM}>`,
 
           to,
 

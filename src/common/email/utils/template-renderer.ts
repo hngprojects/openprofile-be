@@ -27,16 +27,20 @@ handlebars.registerPartial('footer', footerPartial);
 
 export function renderTemplate(
   templateName: string,
-  context: Record<string, any> = {},
+  context: Record<string, unknown> = {},
 ): string {
   const templatePath = path.join(
     templatesDir,
     `${templateName}.hbs`,
   );
 
-  const templateFile = fs.readFileSync(templatePath, 'utf8');
+  const templateFile = fs.readFileSync(
+    templatePath,
+    'utf8',
+  );
 
-  const compiledTemplate = handlebars.compile(templateFile);
+  const compiledTemplate =
+    handlebars.compile(templateFile);
 
   return compiledTemplate(context);
 }
