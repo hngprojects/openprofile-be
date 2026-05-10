@@ -645,33 +645,6 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  async issueResetToken(user: User): Promise<void> {
-    const rawToken = crypto.randomBytes(32).toString('hex');
-    const tokenSelector = crypto
-      .createHash('sha256')
-      .update(rawToken)
-      .digest('hex');
-    const tokenHash = await argon2.hash(rawToken);
-    const expires = new Date(Date.now() + 60 * 60 * 1000);
-
-    await this.usersService.setPasswordResetToken(
-      user.id,
-      tokenSelector,
-      tokenHash,
-      expires,
-    );
-
-    const payload: ResetPasswordEmailData = {
-      to: user.email,
-      resetLink: `${env.FRONTEND_URL}/reset-password?token=${rawToken}`,
-    };
-
-    await this.queueService.addJob<ResetPasswordEmailData>(
-      QUEUE_NAMES.EMAIL,
-      QUEUE_JOB_NAMES.EMAIL.SEND_PASSWORD_RESET,
-      payload,
-    );
-  }
   async resendOtp(email: string): Promise<{ message: string }> {
     const lowercasedEmail = email.toLowerCase();
 
