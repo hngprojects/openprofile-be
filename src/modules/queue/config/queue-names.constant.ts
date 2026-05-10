@@ -12,6 +12,7 @@ export const QUEUE_JOB_NAMES = {
     WAITLIST: 'waitlist',
     ACCOUNT_LOCKED: 'account-locked',
     NEW_IP_LOGIN: 'new-ip-login',
+    SEND_OTP: 'send-otp',
   },
 } as const;
 

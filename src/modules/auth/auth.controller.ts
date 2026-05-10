@@ -28,6 +28,7 @@ import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { setAuthCookies } from './utils/cookie.utils';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import type { GoogleAuthRequest } from './interfaces/google.interface';
+import { ResendOtpDto } from './dto/resend-otp.dto';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -208,5 +209,11 @@ export class AuthController {
   @ApiOperation({ summary: 'Resend a password reset email' })
   resendForgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.authService.resendForgotPassword(dto);
+  }
+
+  @Post('resend-otp')
+  @Public()
+  async resendOtp(@Body() dto: ResendOtpDto) {
+    return this.authService.resendOtp(dto.email);
   }
 }

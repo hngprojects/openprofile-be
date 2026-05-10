@@ -684,4 +684,56 @@ export class AuthService {
       payload,
     );
   }
+  async resendOtp(email: string): Promise<{ message: string }> {
+    const lowercasedEmail = email.toLowerCase();
+
+    const user = await this.usersService.findByEmail(lowercasedEmail);
+
+    const rateLimitKey = `resend-otp:${lowercasedEmail}`;
+    const allowed = await this.rateLimiterService.isAllowed(
+      rateLimitKey,
+      3,
+      3600,
+    );
+
+    if (!allowed) {
+      throw new HttpException(
+        'You have requested too many code.',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    // Prevent email enumeration
+    if (!user) {
+      return {
+        message: 'If the email exists, an OTP has been sent',
+      };
+    }
+    if (user.isVerified) {
+      throw new ConflictException('User is already verified');
+    }
+
+    // invalidate the otp
+
+    await this.usersService.clearOtp(user.id);
+
+    const otp = this.generateOtp();
+    const otpHash = await argon2.hash(otp);
+    const otpExpiresAt = new Date(Date.now() + OTP_TTL_MS);
+    await this.usersService.storeOtpHash(user.id, otpHash, otpExpiresAt);
+
+    await this.queueService.addJob(
+      QUEUE_NAMES.EMAIL,
+      QUEUE_JOB_NAMES.EMAIL.SEND_OTP,
+      {
+        to: user.email,
+        otp,
+        fullName: user.fullName,
+      },
+    );
+
+    return {
+      message: 'OTP has been sent successfully',
+    };
+  }
 }
