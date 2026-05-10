@@ -656,7 +656,7 @@ export class AuthService {
     return { status: 'success', message: FORGOT_PASSWORD_GENERIC_MSG };
   }
 
-  async issueResetToken(user: User): Promise<ResetPasswordEmailData> {
+  async issueResetToken(user: User): Promise<void> {
     const rawToken = crypto.randomBytes(32).toString('hex');
     const tokenSelector = crypto
       .createHash('sha256')
@@ -682,7 +682,5 @@ export class AuthService {
       QUEUE_JOB_NAMES.EMAIL.SEND_PASSWORD_RESET,
       payload,
     );
-    return payload;
   }
-  //
 }
