@@ -11,7 +11,7 @@ export class MailService {
   private readonly resend: Resend;
 
   constructor() {
-    this.resend = new Resend(env.RESEND_API_KEY as string);
+    this.resend = new Resend(env.RESEND_API_KEY);
   }
 
   async sendEmail(to: string, subject: string, html: string): Promise<void> {

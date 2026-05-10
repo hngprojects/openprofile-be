@@ -248,7 +248,7 @@ export class UsersService {
   async findLatestActiveByUserId(
     userId: string,
   ): Promise<ResetPassword | null> {
-    return this.resetPasswordAction.findLatestActiveByUserId(userId);
+    return this.resetPasswordAction.findByUserId(userId);
   }
 
   // Invalidates ALL active tokens for a user before issuing a new one

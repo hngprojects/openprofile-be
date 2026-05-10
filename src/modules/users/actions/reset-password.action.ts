@@ -53,19 +53,6 @@ export class ResetPasswordModelAction extends AbstractModelAction<ResetPassword>
     await this.repo.delete({ userId });
   }
 
-  // Gets the most recent active token's createdAt for cooldown enforcement
-  async findLatestActiveByUserId(
-    userId: string,
-  ): Promise<ResetPassword | null> {
-    return this.repo
-      .createQueryBuilder('rp')
-      .where('rp.userId = :userId', { userId })
-      .andWhere('rp.used = :used', { used: false })
-      .andWhere('rp.expiresAt > CURRENT_TIMESTAMP')
-      .orderBy('rp.createdAt', 'DESC')
-      .getOne();
-  }
-
   // Invalidates ALL active tokens for a user before issuing a new one
   async invalidateAllByUserId(userId: string): Promise<void> {
     await this.repo

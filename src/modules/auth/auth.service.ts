@@ -321,31 +321,7 @@ export class AuthService {
     const user = await this.usersService.findByEmail(dto.email);
 
     if (user && user.password) {
-      const rawToken = crypto.randomBytes(32).toString('hex');
-      const tokenSelector = crypto
-        .createHash('sha256')
-        .update(rawToken)
-        .digest('hex');
-      const tokenHash = await argon2.hash(rawToken);
-      const expires = new Date(Date.now() + 60 * 60 * 1000);
-
-      await this.usersService.setPasswordResetToken(
-        user.id,
-        tokenSelector,
-        tokenHash,
-        expires,
-      );
-
-      const payload: ResetPasswordEmailData = {
-        to: user.email,
-        resetLink: `${env.FRONTEND_URL}/reset-password?token=${rawToken}`,
-      };
-
-      await this.queueService.addJob<ResetPasswordEmailData>(
-        QUEUE_NAMES.EMAIL,
-        QUEUE_JOB_NAMES.EMAIL.SEND_PASSWORD_RESET,
-        payload,
-      );
+      await this.issueResetToken(user);
     }
 
     return { status: 'success', message: FORGOT_PASSWORD_GENERIC_MSG };
@@ -628,7 +604,10 @@ export class AuthService {
     //   Rate limit for resend (3/hr )
     //    Resend is higher-risk — abusing it lets an attacker continuously
     //    invalidate a victim's active token, locking them out of resetting.
-    const rateLimitKey = `resend-forgot-password:${dto.email}`;
+
+    const lowercasedEmail = dto.email.toLowerCase();
+
+    const rateLimitKey = `resend-forgot-password:${lowercasedEmail}`;
     const allowed = await this.rateLimiterService.isAllowed(
       rateLimitKey,
       3,
@@ -642,7 +621,7 @@ export class AuthService {
       );
     }
 
-    const user = await this.usersService.findByEmail(dto.email);
+    const user = await this.usersService.findByEmail(lowercasedEmail);
 
     // 3. Constant-time code path — always enter the block, never branch on user existence.
     //    Prevents user enumeration via response-time differences.
@@ -668,38 +647,41 @@ export class AuthService {
       //    Revokes any previously intercepted/leaked token the moment resend is called.
       await this.usersService.invalidateAllByUserId(user.id);
 
-      // 6. Generate a fresh split token (selector + argon2 verifier).
-      //    Selector: SHA-256 hash used for fast DB lookup (stored in plain text).
-      //    Verifier: argon2 hash — a DB leak cannot be used to directly trigger a reset.
-      const rawToken = crypto.randomBytes(32).toString('hex');
-      const tokenSelector = crypto
-        .createHash('sha256')
-        .update(rawToken)
-        .digest('hex');
-      const tokenHash = await argon2.hash(rawToken);
-      const expires = new Date(Date.now() + 60 * 60 * 1000); // 1-hour expiry
-
-      await this.usersService.setPasswordResetToken(
-        user.id,
-        tokenSelector,
-        tokenHash,
-        expires,
-      );
-
-      const payload: ResetPasswordEmailData = {
-        to: user.email,
-        resetLink: `https://openprofile.com/reset-password?token=${rawToken}`,
-      };
-
-      await this.queueService.addJob<ResetPasswordEmailData>(
-        QUEUE_NAMES.EMAIL,
-        QUEUE_JOB_NAMES.EMAIL.SEND_PASSWORD_RESET,
-        payload,
-      );
+      await this.issueResetToken(user);
     }
 
     // 7. Always return the same generic response whether the user exists or not.
     //    Prevents email enumeration via response body differences.
+
     return { status: 'success', message: FORGOT_PASSWORD_GENERIC_MSG };
+  }
+
+  async issueResetToken(user: User): Promise<ResetPasswordEmailData> {
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenSelector = crypto
+      .createHash('sha256')
+      .update(rawToken)
+      .digest('hex');
+    const tokenHash = await argon2.hash(rawToken);
+    const expires = new Date(Date.now() + 60 * 60 * 1000);
+
+    await this.usersService.setPasswordResetToken(
+      user.id,
+      tokenSelector,
+      tokenHash,
+      expires,
+    );
+
+    const payload: ResetPasswordEmailData = {
+      to: user.email,
+      resetLink: `${env.FRONTEND_URL}/reset-password?token=${rawToken}`,
+    };
+
+    await this.queueService.addJob<ResetPasswordEmailData>(
+      QUEUE_NAMES.EMAIL,
+      QUEUE_JOB_NAMES.EMAIL.SEND_PASSWORD_RESET,
+      payload,
+    );
+    return payload;
   }
 }
