@@ -652,7 +652,14 @@ export class AuthService {
       };
     }
     if (user.isVerified) {
-      throw new ConflictException('User is already verified');
+      this.logger.warn('Resend OTP requested for already-verified user', {
+        userId: user.id,
+      });
+
+      return {
+        message:
+          'If this email is registered, you will receive instructions shortly.',
+      };
     }
 
     // invalidate the otp
