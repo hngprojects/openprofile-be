@@ -113,6 +113,8 @@ export class AuthController {
   @Public()
   @Post('verify-reset-otp')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @UseGuards(ThrottlerGuard)
   @UsePipes(
     new ValidationPipe({
       errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
