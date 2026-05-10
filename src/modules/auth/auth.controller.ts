@@ -199,20 +199,8 @@ export class AuthController {
   }
 
   @Public()
-  @Post('resend-forgot-password')
-  @HttpCode(HttpStatus.OK)
-  @UsePipes(
-    new ValidationPipe({
-      errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
-    }),
-  )
-  @ApiOperation({ summary: 'Resend a password reset email' })
-  resendForgotPassword(@Body() dto: ForgotPasswordDto) {
-    return this.authService.resendForgotPassword(dto);
-  }
-
   @Post('resend-otp')
-  @Public()
+  @HttpCode(HttpStatus.OK)
   async resendOtp(@Body() dto: ResendOtpDto) {
     return this.authService.resendOtp(dto.email);
   }

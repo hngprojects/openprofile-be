@@ -11,7 +11,7 @@ import { PasswordChangedEmailData } from './interfaces/password-changed-email.in
 import { ResetPasswordEmailData } from './interfaces/reset-password-email.interface';
 import { AccountLockedEmailData } from './interfaces/account-locked-email.interface';
 import { NewIpLoginEmailData } from './interfaces/new-ip-login-email.interface';
-import { renderVerificationOtpEmail } from './verifcation-otp.template';
+import { renderVerificationOtpEmail } from './verification-otp.template';
 
 @Processor(QUEUE_NAMES.EMAIL)
 export class MailProcessor extends WorkerHost {
@@ -45,7 +45,7 @@ export class MailProcessor extends WorkerHost {
       case QUEUE_JOB_NAMES.EMAIL.SEND_OTP:
         await this.handleResendOTP(
           job.data as {
-            email: string;
+            to: string;
             otp: string;
             fullName: string;
           },
@@ -100,13 +100,13 @@ export class MailProcessor extends WorkerHost {
   }
 
   private async handleResendOTP(data: {
-    email: string;
+    to: string;
     otp: string;
     fullName: string;
   }) {
     const html = renderVerificationOtpEmail(data.otp, data.fullName);
 
-    await this.mailService.sendEmail(data.email, OTP_EMAIL_SUBJECT, html);
+    await this.mailService.sendEmail(data.to, OTP_EMAIL_SUBJECT, html);
   }
 
   @OnWorkerEvent('completed')

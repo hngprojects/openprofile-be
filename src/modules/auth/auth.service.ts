@@ -599,57 +599,6 @@ export class AuthService {
     ]);
     return { accessToken, refreshToken };
   }
-  async resendForgotPassword(
-    dto: ForgotPasswordDto,
-  ): Promise<Record<string, string>> {
-    //   Rate limit for resend (3/hr )
-    //    Resend is higher-risk — abusing it lets an attacker continuously
-    //    invalidate a victim's active token, locking them out of resetting.
-
-    const lowercasedEmail = dto.email.toLowerCase();
-
-    const rateLimitKey = `resend-forgot-password:${lowercasedEmail}`;
-    const allowed = await this.rateLimiterService.isAllowed(
-      rateLimitKey,
-      3,
-      3600,
-    );
-
-    if (!allowed) {
-      throw new HttpException(
-        'You have requested too many reset links. Please wait 60 minutes before trying again.',
-        HttpStatus.TOO_MANY_REQUESTS,
-      );
-    }
-
-    const user = await this.usersService.findByEmail(lowercasedEmail);
-
-    // 3. Constant-time code path — always enter the block, never branch on user existence.
-    //    Prevents user enumeration via response-time differences.
-    if (user && user.password) {
-      // 4. 60-second cooldown: reject silently if a token was issued less than 60s ago.
-      //    Stops inbox-flooding and token-churn attacks that fit within the rate limit window.
-      const latestToken = await this.usersService.findLatestActiveByUserId(
-        user.id,
-      );
-
-      if (latestToken) {
-        const secondsSinceLastToken =
-          (Date.now() - latestToken.createdAt.getTime()) / 1000;
-
-        if (secondsSinceLastToken < 60) {
-          // Return generic response — don't reveal that a recent token exists.
-          return { status: 'success', message: FORGOT_PASSWORD_GENERIC_MSG };
-        }
-      }
-
-      await this.usersService.invalidateAllByUserId(user.id);
-
-      await this.issueResetToken(user);
-    }
-
-    return { status: 'success', message: FORGOT_PASSWORD_GENERIC_MSG };
-  }
 
   async issueResetToken(user: User): Promise<void> {
     const rawToken = crypto.randomBytes(32).toString('hex');

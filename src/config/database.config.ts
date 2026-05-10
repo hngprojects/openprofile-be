@@ -1,8 +1,7 @@
 import { registerAs } from '@nestjs/config';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { env } from './env';
-import dotenv from 'dotenv';
-dotenv.config();
+
 export const databaseConfig = registerAs(
   'database',
   (): TypeOrmModuleOptions => ({
