@@ -8,9 +8,11 @@ import {
   Req,
   Res,
   UseGuards,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import type { Response } from 'express';
 import { env } from '../../config/env';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
@@ -21,6 +23,7 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { setAuthCookies } from './utils/cookie.utils';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
@@ -34,17 +37,39 @@ export class AuthController {
   @Public()
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Register a new user' })
-  register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto);
+  @ApiOperation({ summary: 'Register a new user with email and password' })
+  async register(
+    @Body() dto: RegisterDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.register(dto);
+
+    if ('httpStatus' in result) {
+      const { httpStatus, ...body } = result;
+      res.status(httpStatus);
+      return body;
+    }
+
+    res.status(HttpStatus.CREATED);
+    return result;
   }
 
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Log in with email and password' })
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  login(
+    @Body() dto: LoginDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const ip =
+      (req.headers['x-forwarded-for'] as string | undefined)
+        ?.split(',')[0]
+        ?.trim() ??
+      req.socket.remoteAddress ??
+      'unknown';
+    return this.authService.login(dto, ip, res);
   }
 
   @Public()
@@ -73,6 +98,11 @@ export class AuthController {
   @Public()
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
+  @UsePipes(
+    new ValidationPipe({
+      errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+    }),
+  )
   @ApiOperation({ summary: 'Request a password reset email' })
   forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.authService.forgotPassword(dto);
@@ -81,9 +111,34 @@ export class AuthController {
   @Public()
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
+  @UsePipes(
+    new ValidationPipe({
+      errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+    }),
+  )
   @ApiOperation({ summary: 'Reset password using token from email' })
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
+  }
+
+  @Public()
+  @Post('verify-otp')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify OTP for email verification' })
+  async verifyOtp(
+    @Body() dto: VerifyOtpDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.verifyOtp(dto, res);
+
+    if ('httpStatus' in result) {
+      const { httpStatus, ...body } = result;
+      res.status(httpStatus as number);
+      return body;
+    }
+
+    res.status(HttpStatus.OK);
+    return result;
   }
 
   // google routes
@@ -96,6 +151,7 @@ export class AuthController {
     },
   })
   @UseGuards(ThrottlerGuard, GoogleAuthGuard)
+  @ApiOperation({ summary: 'Google login endpoint' })
   googleAuth() {}
 
   @Public()
@@ -107,6 +163,7 @@ export class AuthController {
     },
   })
   @UseGuards(ThrottlerGuard, GoogleAuthGuard)
+  @ApiOperation({ summary: 'Google callback endpoint' })
   async googleCallback(@Req() req: GoogleAuthRequest, @Res() res: Response) {
     try {
       /**

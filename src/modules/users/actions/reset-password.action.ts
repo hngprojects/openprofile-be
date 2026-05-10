@@ -13,10 +13,17 @@ export class ResetPasswordModelAction extends AbstractModelAction<ResetPassword>
     super(repo, ResetPassword);
   }
 
-  async findByValidToken(tokenHash: string): Promise<ResetPassword | null> {
+  async findBySelector(tokenSelector: string): Promise<ResetPassword | null> {
     return this.repo
       .createQueryBuilder('rp')
-      .where('rp.tokenHash = :tokenHash', { tokenHash })
+      .where('rp.tokenSelector = :tokenSelector', { tokenSelector })
+      .getOne();
+  }
+
+  async findByValidSelector(tokenSelector: string): Promise<ResetPassword | null> {
+    return this.repo
+      .createQueryBuilder('rp')
+      .where('rp.tokenSelector = :tokenSelector', { tokenSelector })
       .andWhere('rp.used = :used', { used: false })
       .andWhere('rp.expiresAt > CURRENT_TIMESTAMP')
       .getOne();

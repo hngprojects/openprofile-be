@@ -4,22 +4,22 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
+import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
 import { v7 as uuidv7 } from 'uuid';
-import { AuthProvider, UserRole } from './entities/user.entity';
 import { UserModelAction } from './actions/user.action';
 import { ResetPasswordModelAction } from './actions/reset-password.action';
 import { CreateUserDto } from './dto/create-user.dto';
 import { PaginationDto } from './dto/pagination.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { User } from './entities/user.entity';
+import { AuthProvider, User } from './entities/user.entity';
 import { ResetPassword } from '../auth/entities/reset-password.entity';
 
-const BCRYPT_ROUNDS = 10;
 const NO_TRANSACTION = {
   transactionOptions: { useTransaction: false as const },
 };
+
+export const EMAIL_ALREADY_EXISTS = 'EMAIL_ALREADY_EXISTS';
 
 @Injectable()
 export class UsersService {
@@ -34,7 +34,7 @@ export class UsersService {
       throw new ConflictException('Email already in use');
     }
 
-    const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
+    const passwordHash = await argon2.hash(dto.password);
     return this.userModelAction.create({
       ...NO_TRANSACTION,
       createPayload: {
@@ -70,7 +70,7 @@ export class UsersService {
 
     const payload: Partial<User> = { ...dto };
     if (dto.password) {
-      payload.password = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
+      payload.password = await argon2.hash(dto.password);
     }
 
     const updated = await this.userModelAction.update({
@@ -102,6 +102,7 @@ export class UsersService {
 
   async setPasswordResetToken(
     id: string,
+    tokenSelector: string,
     tokenHash: string,
     expires: Date,
   ): Promise<ResetPassword> {
@@ -110,6 +111,7 @@ export class UsersService {
       createPayload: {
         id: uuidv7(),
         userId: id,
+        tokenSelector,
         tokenHash,
         expiresAt: expires,
         used: false,
@@ -117,58 +119,11 @@ export class UsersService {
     });
   }
 
-  async linkGoogleAccount(id: string): Promise<User> {
-    const updated = await this.userModelAction.update({
-      ...NO_TRANSACTION,
-      identifierOptions: { id },
-      updatePayload: { authProvider: AuthProvider.GOOGLE },
-    });
-
-    if (!updated) {
-      throw new InternalServerErrorException('Failed to link Google account');
-    }
-
-    return updated;
-  }
-
-  async createGoogleUser(googleUser: {
-    email: string;
-    fullName: string;
-    isVerified?: boolean;
-    onboardingComplete?: boolean;
-  }): Promise<User> {
-    const randomPassword = crypto.randomBytes(16).toString('hex');
-    const passwordHash = await bcrypt.hash(randomPassword, BCRYPT_ROUNDS);
-    return this.userModelAction.create({
-      ...NO_TRANSACTION,
-      createPayload: {
-        email: googleUser.email,
-        password: passwordHash,
-        fullName: googleUser.fullName,
-        role: UserRole.USER,
-        isVerified: googleUser.isVerified ?? false,
-        onboardingComplete: googleUser.onboardingComplete ?? false,
-        authProvider: AuthProvider.GOOGLE,
-      },
-    });
-  }
-
-  logOAuthLogin(
-    userId: string,
-    ipAddress: string,
-    provider: string,
-  ): void {
-    const timestamp = new Date().toISOString();
-    console.log(
-      `OAuth Login - Provider: ${provider}, User: ${userId}, IP: ${ipAddress}, Timestamp: ${timestamp}`,
-    );
-  }
-
   async findByValidResetToken(
-    tokenHash: string,
+    tokenSelector: string,
   ): Promise<{ user: User; resetPassword: ResetPassword } | null> {
     const resetPassword =
-      await this.resetPasswordAction.findByValidToken(tokenHash);
+      await this.resetPasswordAction.findByValidSelector(tokenSelector);
     if (!resetPassword) return null;
 
     const user = await this.findOne(resetPassword.userId);
@@ -184,11 +139,109 @@ export class UsersService {
   }
 
   async updatePassword(id: string, newPassword: string): Promise<void> {
-    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+        const passwordHash = await argon2.hash(newPassword);
     await this.userModelAction.update({
       ...NO_TRANSACTION,
       identifierOptions: { id },
       updatePayload: { password: passwordHash },
     });
+  }
+
+  async updateLastLoginIp(id: string, ip: string): Promise<void> {
+    await this.userModelAction.update({
+      ...NO_TRANSACTION,
+      identifierOptions: { id },
+      updatePayload: { lastLoginIp: ip },
+    });
+  }
+
+  async findResetTokenBySelector(
+    tokenSelector: string,
+  ): Promise<ResetPassword | null> {
+    return this.resetPasswordAction.findBySelector(tokenSelector);
+  }
+
+  async createEmailUser(dto: {
+    email: string;
+    password: string;
+    fullName: string;
+  }): Promise<User> {
+    const lowercasedEmail = dto.email.toLowerCase();
+    const existing = await this.userModelAction.findByEmail(lowercasedEmail);
+    if (existing) {
+      throw new ConflictException({
+        error: EMAIL_ALREADY_EXISTS,
+        message: 'An account with this email already exists.',
+      });
+    }
+    const passwordHash = await argon2.hash(dto.password);
+    return this.userModelAction.create({
+      ...NO_TRANSACTION,
+      createPayload: {
+        email: lowercasedEmail,
+        password: passwordHash,
+        fullName: dto.fullName,
+        authProvider: AuthProvider.EMAIL,
+        role: null,
+        otpHash: null,
+        otpExpiresAt: null,
+      },
+    });
+  }
+
+  async storeOtpHash(
+    userId: string,
+    otpHash: string,
+    expiresAt: Date,
+  ): Promise<void> {
+    await this.userModelAction.update({
+      ...NO_TRANSACTION,
+      identifierOptions: { id: userId },
+      updatePayload: { otpHash, otpExpiresAt: expiresAt },
+    });
+  }
+
+  async clearOtp(userId: string): Promise<void> {
+    await this.userModelAction.update({
+      ...NO_TRANSACTION,
+      identifierOptions: { id: userId },
+      updatePayload: { otpHash: null, otpExpiresAt: null, isVerified: true },
+    });
+  }
+
+  async linkGoogleAccount(id: string): Promise<void> {
+    await this.userModelAction.update({
+      ...NO_TRANSACTION,
+      identifierOptions: { id },
+      updatePayload: { authProvider: AuthProvider.GOOGLE },
+    });
+  }
+
+  async createGoogleUser(dto: {
+    email: string;
+    fullName: string;
+    isVerified: boolean;
+    onboardingComplete: boolean;
+  }): Promise<User> {
+    const randomPassword = crypto.randomBytes(32).toString('hex');
+    const passwordHash = await argon2.hash(randomPassword);
+    return this.userModelAction.create({
+      ...NO_TRANSACTION,
+      createPayload: {
+        email: dto.email,
+        password: passwordHash,
+        fullName: dto.fullName,
+        authProvider: AuthProvider.GOOGLE,
+        isVerified: dto.isVerified,
+        onboardingComplete: dto.onboardingComplete,
+        role: null,
+      },
+    });
+  }
+
+  logOAuthLogin(userId: string, ipAddress: string, provider: string): void {
+    console.log(
+      `OAuth login: userId=${userId} provider=${provider} ip=${ipAddress} time=${new Date().toISOString()}`,
+    );
   }
 }

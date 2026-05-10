@@ -1,19 +1,17 @@
-import SMTPTransport from 'nodemailer/lib/smtp-transport/index.js';
 import { Injectable, Logger } from '@nestjs/common';
-import { createTransport, Transporter } from 'nodemailer';
 import { env } from '../../config/env';
 import { renderTemplate } from './utils/template-renderer.js';
 
 interface EmailResult {
   success: boolean;
-  data?: SMTPTransport.SentMessageInfo;
+  data?: unknown;
   error?: string;
 }
 
 @Injectable()
 export class EmailService {
-  private readonly transporter: Transporter<SMTPTransport.SentMessageInfo>;
   private readonly logger = new Logger(EmailService.name);
+  private readonly resend: Resend;
 
   constructor() {
     this.transporter = createTransport<SMTPTransport.SentMessageInfo>(

@@ -14,6 +14,7 @@ export enum UserRole {
   ADMIN = 'admin',
   USER = 'user',
 }
+
 export enum AuthProvider {
   EMAIL = 'email',
   GOOGLE = 'google',
@@ -70,6 +71,10 @@ export class User {
     nullable: true,
   })
   otpExpiresAt: Date | null;
+
+  @Exclude()
+  @Column({ type: 'varchar', length: 45, nullable: true, name: 'last_login_ip' })
+  lastLoginIp: string | null;
 
   @Exclude()
   @Column({
