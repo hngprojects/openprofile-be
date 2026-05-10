@@ -50,6 +50,7 @@ jobs:
       REDIS_URL: redis://localhost:6379
       JWT_ACCESS_SECRET: ci-only-access-secret-minimum-32-chars
       JWT_REFRESH_SECRET: ci-only-refresh-secret-minimum-32-chars
+      JWT_RESET_SECRET: ci-only-refresh-secret-minimum-32-chars
       APP_URL: http://localhost:3000
       MAIL_PORT: 465
       MAIL_FROM: test@test.com
