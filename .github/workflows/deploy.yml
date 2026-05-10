@@ -52,8 +52,8 @@ jobs:
       JWT_REFRESH_SECRET: ci-only-refresh-secret-minimum-32-chars
       JWT_RESET_SECRET: ci-only-refresh-secret-minimum-32-chars
       APP_URL: http://localhost:3000
-      MAIL_PORT: 465
-      MAIL_FROM: test@test.com
+      RESEND_API_KEY: your_resend_api_key
+      MAIL_FROM: 'test@test.com'
       MAIL_SECURE: true
       RESEND_API_KEY: some-api-key
       FRONTEND_URL: http://localhost:3000
