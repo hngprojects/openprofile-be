@@ -57,6 +57,8 @@ export const env = createEnv({
       .default('http://localhost:3000/auth/google/callback'),
     RESEND_API_KEY: z.string().min(1),
     MAIL_FROM: z.string().min(1),
+    BE_PROD_URL: z.string().min(1),
+    BE_STAGING_URL: z.string().min(1),
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,
