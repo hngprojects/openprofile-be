@@ -139,7 +139,7 @@ export class UsersService {
   }
 
   async updatePassword(id: string, newPassword: string): Promise<void> {
-        const passwordHash = await argon2.hash(newPassword);
+    const passwordHash = await argon2.hash(newPassword);
     await this.userModelAction.update({
       ...NO_TRANSACTION,
       identifierOptions: { id },
@@ -209,6 +209,15 @@ export class UsersService {
     });
   }
 
+  // Clears OTP fields without marking the account as verified — used for password reset flow.
+  async clearOtpOnly(userId: string): Promise<void> {
+    await this.userModelAction.update({
+      ...NO_TRANSACTION,
+      identifierOptions: { id: userId },
+      updatePayload: { otpHash: null, otpExpiresAt: null },
+    });
+  }
+
   async linkGoogleAccount(id: string): Promise<void> {
     await this.userModelAction.update({
       ...NO_TRANSACTION,
@@ -243,5 +252,16 @@ export class UsersService {
     console.log(
       `OAuth login: userId=${userId} provider=${provider} ip=${ipAddress} time=${new Date().toISOString()}`,
     );
+  }
+
+  async findLatestActiveByUserId(
+    userId: string,
+  ): Promise<ResetPassword | null> {
+    return this.resetPasswordAction.findByUserId(userId);
+  }
+
+  // Invalidates ALL active tokens for a user before issuing a new one
+  async invalidateAllByUserId(userId: string): Promise<void> {
+    await this.resetPasswordAction.invalidateAllByUserId(userId);
   }
 }
