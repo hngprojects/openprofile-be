@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { env } from '../../config/env';
-import { renderVerificationOtpEmail } from './verifcation-otp.template';
+import { renderVerificationOtpEmail } from './verification-otp.template';
+import { renderPasswordResetOtpEmail } from './reset-password-otp.template';
 import { Resend } from 'resend';
 
 export const OTP_EMAIL_SUBJECT = 'Verify your Open Profile account';
@@ -23,6 +24,20 @@ export class MailService {
     });
 
     this.logger.log(`Email sent to ${to} with subject "${subject}"`);
+  }
+
+  // Throws on Resend failure — caller is responsible for catching and logging.
+  async sendPasswordResetOtp(toEmail: string, otp: string): Promise<void> {
+    this.logger.log(`Sending password reset OTP to ${toEmail}`);
+
+    await this.resend.emails.send({
+      from: env.MAIL_FROM,
+      to: toEmail,
+      subject: 'Reset your Open Profile password',
+      html: renderPasswordResetOtpEmail(otp),
+    });
+
+    this.logger.log(`Password reset OTP delivered to ${toEmail}`);
   }
 
   async sendVerificationOtp(
