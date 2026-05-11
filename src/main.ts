@@ -30,9 +30,7 @@ async function bootstrap() {
       .setTitle('OpenProfile BE')
       .setDescription('REST API documentation')
       .setVersion('1.0.0')
-      .addServer(`http://localhost:${env.PORT}`)
-      .addServer(env.BE_STAGING_URL, 'Staging')
-      .addServer(env.BE_PROD_URL, 'Production')
+      .addServer(env.APP_URL)
       .addBearerAuth(
         { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
         'JWT',

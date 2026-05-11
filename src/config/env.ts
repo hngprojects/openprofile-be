@@ -46,7 +46,7 @@ export const env = createEnv({
       .union([z.boolean(), z.enum(['true', 'false'])])
       .default(true)
       .transform((v) => v === true || v === 'true'),
-    APP_URL: z.string().url().optional(),
+    APP_URL: z.url(),
     FRONTEND_URL: z.string().url(),
     REDIS_URL: z.string().min(1).optional(),
     CLIENT_ID: z.string().min(1),
@@ -57,8 +57,6 @@ export const env = createEnv({
       .default('http://localhost:3000/auth/google/callback'),
     RESEND_API_KEY: z.string().min(1),
     MAIL_FROM: z.string().min(1),
-    BE_PROD_URL: z.string().min(1),
-    BE_STAGING_URL: z.string().min(1),
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,
