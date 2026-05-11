@@ -268,6 +268,7 @@ export class UsersService {
       ])
       .where('u.fullName ILIKE :q', { q: `%${q}%` })
       .andWhere('u.deletedAt IS NULL');
+
     if (verified !== undefined) {
       qb.andWhere('u.isVerified = :verified', { verified });
     }
