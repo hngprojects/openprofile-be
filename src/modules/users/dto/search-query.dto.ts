@@ -16,9 +16,9 @@ import { UserRole } from '../entities/user.entity';
 
 export class SearchQueryDto {
   @ApiProperty({ description: 'Search term (2–100 chars)', minLength: 2, maxLength: 100 })
-@Transform(({ value }: { value: unknown }) =>
-  typeof value === 'string' ? value.trim() : value,
-)
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
   @IsString()
   @MinLength(2)
   @MaxLength(100)
@@ -41,7 +41,11 @@ export class SearchQueryDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
-  @Transform(({ value }) => value === 'true' || value === true)
+  @Transform(({ value }: { value: unknown }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
   @IsBoolean()
   verified?: boolean;
 

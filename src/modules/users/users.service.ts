@@ -258,17 +258,18 @@ export class UsersService {
   async search(dto: SearchQueryDto) {
     const { q, page = 1, limit = 20, verified, role, sort = 'az' } = dto;
 
-  const qb = this.userModelAction
-  .createQueryBuilder('u')
-  .select([
-    'u.id',
-    'u.fullName',
-    'u.role',
-    'u.isVerified',
-    'u.createdAt',
-  ])
-  .where('u.fullName ILIKE :q', { q: `%${q}%` })
-  .andWhere('u.deletedAt IS NULL');
+    const qb = this.userModelAction
+      .createQueryBuilder('u')
+      .select([
+        'u.id',
+        'u.fullName',
+        'u.role',
+        'u.isVerified',
+        'u.createdAt',
+      ])
+      .where('u.fullName ILIKE :q', { q: `%${q}%` })
+      .andWhere('u.deletedAt IS NULL');
+
     if (verified !== undefined) {
       qb.andWhere('u.isVerified = :verified', { verified });
     }
