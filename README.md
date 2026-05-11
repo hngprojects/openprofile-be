@@ -1,4 +1,4 @@
-# NestJS Starter
+# Open Profile
 
 A production-ready NestJS 11 starter with PostgreSQL, JWT auth, the repository pattern via [`@hng-sdk/orm`](https://www.npmjs.com/package/@hng-sdk/orm), and migrations out of the box.
 
