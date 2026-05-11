@@ -211,12 +211,12 @@ export class UsersService {
   }
 
   async clearOtpOnly(userId: string): Promise<void> {
-  await this.userModelAction.update({
-    ...NO_TRANSACTION,
-    identifierOptions: { id: userId },
-    updatePayload: { otpHash: null, otpExpiresAt: null },
-  });
-}
+    await this.userModelAction.update({
+      ...NO_TRANSACTION,
+      identifierOptions: { id: userId },
+      updatePayload: { otpHash: null, otpExpiresAt: null },
+    });
+  }
 
   async linkGoogleAccount(id: string): Promise<void> {
     await this.userModelAction.update({
@@ -254,7 +254,6 @@ export class UsersService {
     );
   }
 
-  
   async search(dto: SearchQueryDto) {
     const { q, page = 1, limit = 20, verified, role, sort = 'az' } = dto;
 
@@ -269,7 +268,6 @@ export class UsersService {
       ])
       .where('u.fullName ILIKE :q', { q: `%${q}%` })
       .andWhere('u.deletedAt IS NULL');
-
     if (verified !== undefined) {
       qb.andWhere('u.isVerified = :verified', { verified });
     }
@@ -325,4 +323,3 @@ export class UsersService {
     await this.resetPasswordAction.invalidateAllByUserId(userId);
   }
 }
-
