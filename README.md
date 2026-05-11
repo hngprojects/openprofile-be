@@ -287,3 +287,199 @@ See `.env.example` for the full list. Critical ones:
 ## License
 
 UNLICENSED
+
+
+
+New Search Feature section 
+# Search Feature
+
+## Overview
+
+Public profile search endpoint that allows visitors to find published user profiles by full name or username using PostgreSQL `pg_trgm` trigram similarity matching.
+
+---
+
+## Endpoint
+
+```
+GET /search?q={query}
+```
+
+- Publicly accessible — no authentication required
+- Rate limited to 60 requests per minute per IP
+
+---
+
+## Query Parameter
+
+| Parameter | Type   | Required | Description                          |
+|-----------|--------|----------|--------------------------------------|
+| `q`       | string | Yes      | Search term. Minimum 2 characters, maximum 100 characters |
+
+---
+
+## Response
+
+### Success `200`
+
+```json
+{
+  "success": true,
+  "data": {
+    "results": [
+      {
+        "username": "adebayo",
+        "fullName": "Adebayo Johnson",
+        "bio": "Backend engineer and product builder.",
+        "photoUrl": "https://example.com/adebayo.jpg",
+        "isVerified": false
+      }
+    ],
+    "total": 1
+  }
+}
+```
+
+### Result shape per item
+
+| Field        | Type            | Description                          |
+|--------------|-----------------|--------------------------------------|
+| `username`   | string          | Unique profile username              |
+| `fullName`   | string          | Full display name                    |
+| `bio`        | string or null  | Profile bio, truncated to 120 chars  |
+| `photoUrl`   | string or null  | Profile photo URL                    |
+| `isVerified` | boolean         | Whether the profile is verified      |
+
+### Empty results `200`
+
+```json
+{
+  "success": true,
+  "data": {
+    "results": [],
+    "total": 0
+  }
+}
+```
+
+Frontend handles the empty state UI.
+
+### Validation error `400`
+
+Returned when `q` is missing, under 2 characters, or blank after trimming.
+
+```json
+{
+  "success": false,
+  "error": "Please enter at least 2 characters to search."
+}
+```
+
+---
+
+## Search Logic
+
+- Uses PostgreSQL `pg_trgm` trigram similarity across `full_name` and `username` columns
+- Case-insensitive matching
+- Partial matches supported — e.g. searching `ade` returns `Adebayo`, `Adeola`, etc.
+- Only profiles where `is_published = true` are included
+- Soft-deleted profiles (`deleted_at IS NOT NULL`) are excluded
+- Results ordered by similarity score descending — most relevant first
+- Exact `username` matches are boosted above partial matches
+- Maximum 20 results returned per query
+
+---
+
+## Rate Limiting
+
+| Header                  | Value         |
+|-------------------------|---------------|
+| `x-ratelimit-limit`     | 60            |
+| `x-ratelimit-remaining` | 59 (example)  |
+| `x-ratelimit-reset`     | 60 (seconds)  |
+
+---
+
+## Architecture
+
+```
+Controller  (GET /search)
+    ↓
+SearchService  (input validation + orchestration)
+    ↓
+SearchAction  (DB query logic — pg_trgm)
+    ↓
+TypeORM → PostgreSQL
+```
+
+### Files
+
+| File | Responsibility |
+|------|---------------|
+| `src/modules/search/search.controller.ts` | Route, public decorator, throttle guard |
+| `src/modules/search/search.service.ts` | Validates input, calls action, formats response |
+| `src/modules/search/actions/search.action.ts` | All DB logic — trigram query, ordering, limit |
+| `src/modules/search/dto/search-query.dto.ts` | Validates and transforms `q` |
+| `src/modules/search/search.module.ts` | Module wiring |
+| `src/database/migrations/1778520370661-AddProfileSearchFields.ts` | Adds columns, installs `pg_trgm`, creates GIN indexes |
+
+---
+
+## Database Migration
+
+Adds the following to the `users` table:
+
+| Column         | Type           | Default |
+|----------------|----------------|---------|
+| `username`     | varchar(100)   | null    |
+| `bio`          | text           | null    |
+| `photo_url`    | varchar(500)   | null    |
+| `is_published` | boolean        | false   |
+
+### Indexes created
+
+```sql
+-- Trigram indexes for similarity search
+CREATE INDEX users_full_name_trgm_idx ON users USING GIN (full_name gin_trgm_ops);
+CREATE INDEX users_username_trgm_idx  ON users USING GIN (username gin_trgm_ops);
+
+-- Unique index on username
+CREATE UNIQUE INDEX users_username_unique_idx ON users (username) WHERE username IS NOT NULL;
+```
+
+---
+
+## Example Request
+
+```bash
+curl -X GET 'http://localhost:3000/search?q=ade' \
+  -H 'accept: */*'
+```
+
+### Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "results": [
+      {
+        "username": "adebayo",
+        "fullName": "Adebayo Johnson",
+        "bio": "Backend engineer and product builder.",
+        "photoUrl": "https://example.com/adebayo.jpg",
+        "isVerified": false
+      }
+    ],
+    "total": 1
+  }
+}
+```
+
+---
+
+## Validation
+
+- `npm run build` — passed
+- `npm test` — passed
+- Live: `GET /search?q=ade` returns correct shape with rate limit headers
