@@ -46,7 +46,7 @@ export const env = createEnv({
       .union([z.boolean(), z.enum(['true', 'false'])])
       .default(true)
       .transform((v) => v === true || v === 'true'),
-    APP_URL: z.string().url().optional(),
+    APP_URL: z.url(),
     FRONTEND_URL: z.string().url(),
     REDIS_URL: z.string().min(1).optional(),
     CLIENT_ID: z.string().min(1),
