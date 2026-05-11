@@ -59,6 +59,8 @@ jobs:
       FRONTEND_URL: http://localhost:3000
       CLIENT_ID: test-client-id
       CLIENT_SECRET: test-client-secret
+      BE_PROD_URL: your-prod-url
+      BE_STAGING_URL: your-staging-url
 
     steps:
       - name: Checkout code
