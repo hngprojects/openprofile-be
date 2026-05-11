@@ -209,7 +209,6 @@ export class UsersService {
     });
   }
 
-  // Clears OTP fields without marking the account as verified — used for password reset flow.
   async clearOtpOnly(userId: string): Promise<void> {
     await this.userModelAction.update({
       ...NO_TRANSACTION,
@@ -260,7 +259,6 @@ export class UsersService {
     return this.resetPasswordAction.findByUserId(userId);
   }
 
-  // Invalidates ALL active tokens for a user before issuing a new one
   async invalidateAllByUserId(userId: string): Promise<void> {
     await this.resetPasswordAction.invalidateAllByUserId(userId);
   }
