@@ -92,12 +92,11 @@ export class UsersService {
     });
   }
 
-  async markOnboardingComplete(id: string): Promise<User> {
-    await this.findOne(id);
-
+  async markOnboardingComplete(userId: string): Promise<User> {
+    await this.findOne(userId);
     const updated = await this.userModelAction.update({
       ...NO_TRANSACTION,
-      identifierOptions: { id },
+      identifierOptions: { id: userId },
       updatePayload: { onboardingComplete: true },
     });
     if (!updated) {
