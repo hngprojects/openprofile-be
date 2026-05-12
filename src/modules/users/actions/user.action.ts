@@ -13,7 +13,15 @@ export class UserModelAction extends AbstractModelAction<User> {
     super(repo, User);
   }
 
-  async findByEmail(email: string): Promise<User | null> {
+  findByEmail(email: string): Promise<User | null> {
     return this.get({ identifierOptions: { email } });
+  }
+
+  createQueryBuilder(alias: string) { //
+    return this.repository.createQueryBuilder(alias);
+  }
+
+  async findByUsername(username: string): Promise<User | null> {
+    return this.get({ identifierOptions: { username } });
   }
 }

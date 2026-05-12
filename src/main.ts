@@ -17,11 +17,10 @@ async function bootstrap() {
   app.use(compression());
   app.use(cookieParser());
   app.enableCors({
-    origin:
-      env.CORS_ORIGIN === '*' ? true : (env.CORS_ORIGIN).split(','),
+    origin: env.CORS_ORIGIN === '*' ? true : env.CORS_ORIGIN.split(','),
     credentials: true,
   });
-  app.setGlobalPrefix('api', { exclude: ['health'] });
+  app.setGlobalPrefix('api', { exclude: ['health', 'search'] });
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
   app.enableShutdownHooks();
 
