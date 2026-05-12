@@ -1,32 +1,47 @@
 import {
-  Body,
   Controller,
+  Get,
+  Headers,
   HttpCode,
   HttpStatus,
-  Post,
+  Param,
+  Res,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { CurrentUser} from '../../common/decorators/current-user.decorator';
-import type { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
-import { CreateProfileDto } from './dto/create-profile.dto';
+import type { Response } from 'express';
+import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { Public } from '../../common/decorators/public.decorator';
 import { ProfileService } from './profile.service';
 
-@ApiTags('Profile')
-@Controller('profile')
+@ApiTags('profiles')
+@Controller('profiles')
 export class ProfileController {
   constructor(private readonly profileService: ProfileService) {}
 
-  @Post()
-  @HttpCode(HttpStatus.CREATED)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Complete onboarding with profile details' })
-  @ApiResponse({ status: 201, description: 'Profile created successfully' })
-  @ApiResponse({ status: 409, description: 'User already has a profile or username is taken' })
-  @ApiResponse({ status: 422, description: 'Invalid username format' })
-  async createProfile(
-    @Body() createProfileDto: CreateProfileDto,
-    @CurrentUser() user: AuthenticatedUser,
+  @Public()
+  @Get(':username')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { ttl: 60_000, limit: 60 } })
+  @UseGuards(ThrottlerGuard)
+  @ApiOperation({ summary: 'Get a public profile by username' })
+  @ApiParam({ name: 'username', description: 'The profile username' })
+  async getPublicProfile(
+    @Param('username') username: string,
+    @Headers('if-none-match') ifNoneMatch: string | undefined,
+    @Res({ passthrough: true }) res: Response,
   ) {
-    return this.profileService.createProfile(createProfileDto, user);
+    const { data, etag, fromCache } = await this.profileService.getPublicProfile(username);
+
+    res.setHeader('ETag', etag);
+    res.setHeader('Cache-Control', 'public, max-age=60');
+    res.setHeader('X-Cache', fromCache ? 'HIT' : 'MISS');
+
+    if (ifNoneMatch && ifNoneMatch === etag) {
+      res.status(HttpStatus.NOT_MODIFIED);
+      return;
+    }
+
+    return data;
   }
 }
