@@ -63,3 +63,4 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 req.md
 src/database/seeds/profile.seeder.ts
 load-test.js
+repomix-output.xml

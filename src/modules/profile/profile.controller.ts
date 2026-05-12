@@ -6,11 +6,11 @@ import {
   HttpStatus,
   Param,
   Res,
+  UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
-import { UseGuards } from '@nestjs/common';
 import { Public } from '../../common/decorators/public.decorator';
 import { ProfileService } from './profile.service';
 
@@ -35,12 +35,7 @@ export class ProfileController {
 
     res.setHeader('ETag', etag);
     res.setHeader('Cache-Control', 'public, max-age=60');
-
-    if (fromCache) {
-      res.setHeader('X-Cache', 'HIT');
-    } else {
-      res.setHeader('X-Cache', 'MISS');
-    }
+    res.setHeader('X-Cache', fromCache ? 'HIT' : 'MISS');
 
     if (ifNoneMatch && ifNoneMatch === etag) {
       res.status(HttpStatus.NOT_MODIFIED);

@@ -11,21 +11,47 @@ export class ModifyUsername1778564268569 implements MigrationInterface {
         await queryRunner.query(`ALTER TABLE "users" DROP COLUMN IF EXISTS "password_reset_token_hash"`);
         await queryRunner.query(`ALTER TABLE "users" DROP COLUMN IF EXISTS "password_reset_expires"`);
         await queryRunner.query(`ALTER TABLE "users" DROP COLUMN IF EXISTS "provider"`);
-        await queryRunner.query(`ALTER TABLE "waitList" ADD CONSTRAINT "UQ_c964d1d61359c1a9f8aa31eb0c2" UNIQUE ("email")`);
+
+        // Add constraint only if it doesn't already exist
+        await queryRunner.query(`
+          DO $$ BEGIN
+            IF NOT EXISTS (
+              SELECT 1 FROM information_schema.table_constraints
+              WHERE constraint_name = 'UQ_c964d1d61359c1a9f8aa31eb0c2'
+                AND table_name = 'waitList'
+            ) THEN
+              ALTER TABLE "waitList" ADD CONSTRAINT "UQ_c964d1d61359c1a9f8aa31eb0c2" UNIQUE ("email");
+            END IF;
+          END $$;
+        `);
+
         await queryRunner.query(`ALTER TABLE "users" DROP COLUMN IF EXISTS "username"`);
         await queryRunner.query(`ALTER TABLE "users" ADD "username" character varying(30)`);
-        await queryRunner.query(`ALTER TABLE "users" ADD CONSTRAINT "UQ_fe0bb3f6520ee0469504521e710" UNIQUE ("username")`);
+
+        // Add unique constraint only if it doesn't already exist
+        await queryRunner.query(`
+          DO $$ BEGIN
+            IF NOT EXISTS (
+              SELECT 1 FROM information_schema.table_constraints
+              WHERE constraint_name = 'UQ_fe0bb3f6520ee0469504521e710'
+                AND table_name = 'users'
+            ) THEN
+              ALTER TABLE "users" ADD CONSTRAINT "UQ_fe0bb3f6520ee0469504521e710" UNIQUE ("username");
+            END IF;
+          END $$;
+        `);
+
         await queryRunner.query(`ALTER TABLE "reset_password" ALTER COLUMN "tokenSelector" DROP DEFAULT`);
-        await queryRunner.query(`CREATE UNIQUE INDEX "IDX_fe0bb3f6520ee0469504521e71" ON "users" ("username") `);
+        await queryRunner.query(`CREATE UNIQUE INDEX IF NOT EXISTS "IDX_fe0bb3f6520ee0469504521e71" ON "users" ("username") `);
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`DROP INDEX IF EXISTS "public"."IDX_fe0bb3f6520ee0469504521e71"`);
         await queryRunner.query(`ALTER TABLE "reset_password" ALTER COLUMN "tokenSelector" SET DEFAULT ''`);
-        await queryRunner.query(`ALTER TABLE "users" DROP CONSTRAINT "UQ_fe0bb3f6520ee0469504521e710"`);
-        await queryRunner.query(`ALTER TABLE "users" DROP COLUMN "username"`);
+        await queryRunner.query(`ALTER TABLE "users" DROP CONSTRAINT IF EXISTS "UQ_fe0bb3f6520ee0469504521e710"`);
+        await queryRunner.query(`ALTER TABLE "users" DROP COLUMN IF EXISTS "username"`);
         await queryRunner.query(`ALTER TABLE "users" ADD "username" character varying(100)`);
-        await queryRunner.query(`ALTER TABLE "waitList" DROP CONSTRAINT "UQ_c964d1d61359c1a9f8aa31eb0c2"`);
+        await queryRunner.query(`ALTER TABLE "waitList" DROP CONSTRAINT IF EXISTS "UQ_c964d1d61359c1a9f8aa31eb0c2"`);
         await queryRunner.query(`ALTER TABLE "users" ADD "provider" character varying(32) NOT NULL DEFAULT 'local'`);
         await queryRunner.query(`ALTER TABLE "users" ADD "password_reset_expires" TIMESTAMP WITH TIME ZONE`);
         await queryRunner.query(`ALTER TABLE "users" ADD "password_reset_token_hash" character varying(64)`);

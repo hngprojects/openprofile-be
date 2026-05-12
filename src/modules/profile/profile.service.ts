@@ -99,10 +99,10 @@ export class ProfileService {
   ): Record<string, unknown> {
     return {
       username: profile.username,
-      fullName: profile.fullName ?? profile.user?.fullName ?? null,
+      fullName: profile.fullName ?? null,
       bio: profile.bio,
-      avatarUrl: profile.avatarUrl,
-      templateId: profile.templateId,
+      photoUrl: profile.photoUrl,
+      templateType: profile.templateType,
       themeSettings: profile.themeSettings,
       components: components.map((c) => ({
         sectionType: c.sectionType,

@@ -13,12 +13,6 @@ import {
 import { User } from '../../users/entities/user.entity';
 import { ProfileComponent } from './profile-component.entity';
 
-export enum ProfileTemplate {
-  PROFESSIONAL = 'PROFESSIONAL',
-  CREATOR = 'CREATOR',
-  FREELANCER = 'FREELANCER',
-}
-
 @Entity('profiles')
 export class Profile {
   @PrimaryGeneratedColumn('uuid')
@@ -27,32 +21,27 @@ export class Profile {
   @Column({ type: 'uuid', name: 'user_id' })
   userId: string;
 
-  @OneToOne(() => User)
+  @OneToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user: User;
 
   @Index({ unique: true })
-  @Column({ type: 'varchar', length: 50, unique: true, nullable: true })
-  username: string | null;
+  @Column({ unique: true })
+  username: string;
 
-  @Column({ type: 'varchar', length: 255, name: 'full_name', nullable: true })
-  fullName: string | null;
+  @Column({ name: 'full_name' })
+  fullName: string;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ nullable: true, type: 'text' })
   bio: string | null;
 
-  @Column({ type: 'varchar', length: 500, name: 'avatar_url', nullable: true })
-  avatarUrl: string | null;
+  @Column({ name: 'photo_url', nullable: true })
+  photoUrl: string | null;
 
-  @Column({
-    type: 'enum',
-    enum: ProfileTemplate,
-    name: 'template_id',
-    default: ProfileTemplate.PROFESSIONAL,
-  })
-  templateId: ProfileTemplate;
+  @Column({ name: 'template_type', nullable: true })
+  templateType: string | null;
 
-  @Column({ type: 'jsonb', name: 'theme_settings', nullable: true })
+  @Column({ name: 'theme_settings', nullable: true, type: 'jsonb' })
   themeSettings: Record<string, unknown> | null;
 
   @Column({ type: 'boolean', name: 'is_searchable', default: true })
