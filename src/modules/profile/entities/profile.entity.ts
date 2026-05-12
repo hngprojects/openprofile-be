@@ -35,10 +35,10 @@ export class Profile {
   @Column({ nullable: true, type: 'text' })
   bio: string | null;
 
-  @Column({ name: 'photo_url', nullable: true })
+  @Column({ type: 'varchar', name: 'photo_url', nullable: true })
   photoUrl: string | null;
 
-  @Column({ name: 'template_type', nullable: true })
+  @Column({ type: 'varchar', name: 'template_type', nullable: true })
   templateType: string | null;
 
   @Column({ name: 'theme_settings', nullable: true, type: 'jsonb' })
