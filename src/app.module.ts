@@ -23,7 +23,11 @@ import { QueueModule } from './modules/queue/queue.module';
 import { MailModule } from './modules/mail/mail.module';
 import {UsernamesModule} from './modules/usernames/usernames.module';
 import { ThrottlerModule } from '@nestjs/throttler';
+<<<<<<< HEAD
 import { SearchModule } from './modules/search/search.module';
+=======
+import { ProfileModule } from './modules/profile/profile.module';
+>>>>>>> e50322e (feat: implement profile creation functionality)
 
 @Module({
   imports: [
@@ -47,8 +51,12 @@ import { SearchModule } from './modules/search/search.module';
     UsersModule,
     AuthModule,
     MailModule,
+<<<<<<< HEAD
     SearchModule,
     UsernamesModule,
+=======
+    ProfileModule
+>>>>>>> e50322e (feat: implement profile creation functionality)
   ],
   providers: [
     {
@@ -73,4 +81,4 @@ import { SearchModule } from './modules/search/search.module';
     { provide: APP_INTERCEPTOR, useClass: TransformInterceptor },
   ],
 })
-export class AppModule {}
+export class AppModule { }
