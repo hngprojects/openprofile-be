@@ -746,8 +746,11 @@ export class AuthService {
 
     let parsed: { meta: Record<string, unknown>; createdAt: number };
     try {
-      parsed = JSON.parse(raw);
-    } catch (err) {
+      parsed = JSON.parse(raw) as {
+        meta: Record<string, unknown>;
+        createdAt: number;
+      };
+    } catch {
       this.logger.error(`[OAuth] Failed to parse state payload`, {
         provider,
         stateSample: state.slice(0, 8),
