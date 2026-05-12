@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { env } from '../../config/env';
 import { Resend } from 'resend';
+import { renderWaitlistEmail } from '../../modules/mail/templates/waitlist.template';
 
 interface EmailResult {
   success: boolean;
@@ -18,23 +19,32 @@ export class EmailService {
     this.logger.log('EmailService initialized with Resend');
   }
 
-  async sendWaitlistEmail(to: string): Promise<EmailResult> {
-    try {
-      const data = await this.resend.emails.send({
-        from: env.MAIL_FROM,
-        to,
-        subject: "You're on the OpenProfile wait list!",
-        html: this.getWaitlistEmailHtml(),
-      });
+async sendWaitlistEmail(to: string): Promise<EmailResult> {
+  try {
+    const html = renderWaitlistEmail();
 
-      return { success: true, data };
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : 'Failed to send waitlist email';
-      this.logger.error(`Failed to send email to ${to}:`, message);
-      return { success: false, error: message };
-    }
+    const data = await this.resend.emails.send({
+      from: env.MAIL_FROM,
+      to,
+      subject: "You're on the OpenProfile wait list!",
+      html,
+    });
+
+    return { success: true, data };
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error
+        ? err.message
+        : 'Failed to send waitlist email';
+
+    this.logger.error(
+      `Failed to send email to ${to}:`,
+      message,
+    );
+
+    return { success: false, error: message };
   }
+}
 
   private getWaitlistEmailHtml(): string {
     return `
