@@ -5,9 +5,9 @@ export class ModifyUsername1778564268569 implements MigrationInterface {
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`DROP INDEX IF EXISTS "public"."users_username_unique_idx"`);
-        await queryRunner.query(`DROP INDEX "public"."users_full_name_trgm_idx"`);
-        await queryRunner.query(`DROP INDEX "public"."users_username_trgm_idx"`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_reset_password_tokenSelector"`);
+        await queryRunner.query(`DROP INDEX IF EXISTS "public"."users_full_name_trgm_idx"`);
+        await queryRunner.query(`DROP INDEX IF EXISTS "public"."users_username_trgm_idx"`);
+        await queryRunner.query(`DROP INDEX IF EXISTS "public"."IDX_reset_password_tokenSelector"`);
         await queryRunner.query(`ALTER TABLE "users" DROP COLUMN "password_reset_token_hash"`);
         await queryRunner.query(`ALTER TABLE "users" DROP COLUMN "password_reset_expires"`);
         await queryRunner.query(`ALTER TABLE "users" DROP COLUMN "provider"`);
@@ -20,7 +20,7 @@ export class ModifyUsername1778564268569 implements MigrationInterface {
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`DROP INDEX "public"."IDX_fe0bb3f6520ee0469504521e71"`);
+        await queryRunner.query(`DROP INDEX IF EXISTS "public"."IDX_fe0bb3f6520ee0469504521e71"`);
         await queryRunner.query(`ALTER TABLE "reset_password" ALTER COLUMN "tokenSelector" SET DEFAULT ''`);
         await queryRunner.query(`ALTER TABLE "users" DROP CONSTRAINT "UQ_fe0bb3f6520ee0469504521e710"`);
         await queryRunner.query(`ALTER TABLE "users" DROP COLUMN "username"`);
