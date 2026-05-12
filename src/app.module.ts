@@ -18,6 +18,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { HealthModule } from './modules/health/health.module';
 import { WaitlistModule } from './modules/waitlist/waitlist.module';
+import { PortfolioModule } from './modules/portfolio/portfolio.module';
 import { UsersModule } from './modules/users/users.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { MailModule } from './modules/mail/mail.module';
@@ -53,6 +54,7 @@ import { ContactModule } from './modules/contact/contact.module';
     ProfileModule,
     SearchModule,
     UsernamesModule,
+    PortfolioModule,
     ContactModule,
   ],
   providers: [
