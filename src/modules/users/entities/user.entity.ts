@@ -39,9 +39,9 @@ export class User {
   @Column({ type: 'varchar', length: 255, name: 'full_name' })
   fullName: string;
 
-  @ApiProperty({ nullable: true })
+  @ApiProperty({ example: 'john-doe', nullable: true })
   @Index({ unique: true })
-  @Column({ type: 'varchar', length: 100, nullable: true })
+  @Column({ type: 'varchar', length: 30, unique: true, nullable: true })
   username: string | null;
 
   @ApiProperty({ nullable: true })
