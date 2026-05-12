@@ -39,6 +39,23 @@ export class User {
   @Column({ type: 'varchar', length: 255, name: 'full_name' })
   fullName: string;
 
+  @ApiProperty({ example: 'john-doe', nullable: true })
+  @Index({ unique: true })
+  @Column({ type: 'varchar', length: 30, unique: true, nullable: true })
+  username: string | null;
+
+  @ApiProperty({ nullable: true })
+  @Column({ type: 'text', nullable: true })
+  bio: string | null;
+
+  @ApiProperty({ nullable: true })
+  @Column({ type: 'varchar', length: 500, name: 'photo_url', nullable: true })
+  photoUrl: string | null;
+
+  @ApiProperty({ default: false })
+  @Column({ type: 'boolean', name: 'is_published', default: false })
+  isPublished: boolean;
+
   @ApiProperty({ enum: UserRole, nullable: true, default: null })
   @Column({ type: 'enum', enum: UserRole, nullable: true, default: null })
   role: UserRole | null;
@@ -73,7 +90,12 @@ export class User {
   otpExpiresAt: Date | null;
 
   @Exclude()
-  @Column({ type: 'varchar', length: 45, nullable: true, name: 'last_login_ip' })
+  @Column({
+    type: 'varchar',
+    length: 45,
+    nullable: true,
+    name: 'last_login_ip',
+  })
   lastLoginIp: string | null;
 
   @Exclude()

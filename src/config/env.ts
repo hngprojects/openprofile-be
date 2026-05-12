@@ -37,13 +37,16 @@ export const env = createEnv({
       .string()
       .min(32, { message: 'JWT_REFRESH_SECRET must be at least 32 chars' }),
     JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
+    JWT_RESET_SECRET: z
+      .string()
+      .min(32, { message: 'JWT_RESET_SECRET must be at least 32 chars' }),
 
     CORS_ORIGIN: z.string().default('*'),
     SWAGGER_ENABLED: z
       .union([z.boolean(), z.enum(['true', 'false'])])
       .default(true)
       .transform((v) => v === true || v === 'true'),
-    APP_URL: z.string().url().optional(),
+    APP_URL: z.url(),
     FRONTEND_URL: z.string().url(),
     REDIS_URL: z.string().min(1).optional(),
     CLIENT_ID: z.string().min(1),

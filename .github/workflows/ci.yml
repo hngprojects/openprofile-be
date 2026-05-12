@@ -1,4 +1,4 @@
-name: CI
+name: CI PIPELINE
 
 on:
   push:
@@ -33,8 +33,9 @@ jobs:
       DATABASE_NAME: test_db
       JWT_ACCESS_SECRET: ci-only-not-a-real-secret-access-key-min-32-chars
       JWT_REFRESH_SECRET: ci-only-not-a-real-secret-refresh-key-min-32-chars
+      JWT_RESET_SECRET: ci-only-not-a-real-secret-reset-key-min-32-chars-x
       REDIS_URL: redis://localhost:6379
-      APP_URL: http://localhost:3000/
+      APP_URL: http://localhost:3000
 
       RESEND_API_KEY: your_resend_api_key
       MAIL_FROM: 'test@test.com'

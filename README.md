@@ -1,4 +1,4 @@
-# NestJS Starter
+# Open Profile BE
 
 A production-ready NestJS 11 starter with PostgreSQL, JWT auth, the repository pattern via [`@hng-sdk/orm`](https://www.npmjs.com/package/@hng-sdk/orm), and migrations out of the box.
 
@@ -287,3 +287,331 @@ See `.env.example` for the full list. Critical ones:
 ## License
 
 UNLICENSED
+
+
+
+# Usernames Feature
+
+## Overview
+
+Availability checking for user-chosen profile usernames. The feature enforces strict validation rules (format, length, reserved words, homoglyph protection) and is rate-limited to prevent abuse.
+
+---
+
+## Endpoints
+
+### `GET /usernames/check` (Public, Rate-Limited)
+
+| Attribute   | Value |
+|-------------|-------|
+| Auth        | None (public) |
+| Rate limit  | 60 req/min/IP (Redis, in-memory fallback) |
+| Query param | `username` (string, required) |
+
+**Success `200`:**
+```json
+{
+  "available": true,
+  "username": "normalized-username"
+}
+```
+
+**Taken `409`:**
+```json
+{
+  "statusCode": 409,
+  "error": "USERNAME_TAKEN",
+  "message": "Username is already taken"
+}
+```
+
+**Invalid `400`:**
+```json
+{
+  "statusCode": 400,
+  "error": "INVALID_FORMAT",
+  "message": "Username must be 3-30 characters, only lowercase letters, digits, and hyphens"
+}
+```
+
+### `GET /usernames/check/internal` (Authenticated, No Rate Limit)
+
+Same behavior as the public endpoint but requires a Bearer JWT and bypasses the rate-limit guard. Useful for server-to-server checks.
+
+---
+
+## Validation Rules
+
+| Rule | Detail |
+|------|--------|
+| Min length | 3 characters |
+| Max length | 30 characters |
+| Allowed chars | `a-z`, `0-9`, hyphens (`-`) |
+| Leading/trailing hyphen | Not allowed |
+| Consecutive hyphens | Not allowed (e.g. `co--ol`) |
+| Ambiguous unicode | Cyrillic, Greek, CJK blocked |
+| Reserved names | ~50 reserved keywords (`admin`, `api`, `test`, etc.) |
+| Uniqueness | Must not exist in `users` table |
+
+---
+
+## Rate Limiting
+
+| Header | Value |
+|--------|-------|
+| `x-ratelimit-limit` | 60 |
+| `x-ratelimit-remaining` | 59 (example) |
+| `x-ratelimit-reset` | 60 (seconds) |
+
+If Redis is unreachable, falls back to an in-memory store with a 10 req/min/IP limit.
+
+---
+
+## Architecture
+
+```
+Controller  (GET /usernames/check)
+    ↓
+UsernamesService  (normalize → validate → check DB)
+    ↓
+UsersService → UserModelAction  (DB lookup)
+    ↓
+TypeORM → PostgreSQL
+```
+
+### Files
+
+| File | Responsibility |
+|------|----------------|
+| `src/modules/usernames/usernames.controller.ts` | Routes, public decorator, rate-limit guard |
+| `src/modules/usernames/usernames.service.ts` | Core logic: normalization, validation, DB uniqueness check |
+| `src/modules/usernames/dto/check-username.dto.ts` | Validates the `username` query parameter |
+| `src/modules/usernames/guards/username-rate-limit.guard.ts` | Redis-backed rate limiter with in-memory fallback |
+| `src/modules/usernames/data/reserved-keywords.ts` | Set of ~50 reserved usernames |
+| `src/modules/usernames/username.service.spec.ts` | Unit tests |
+
+---
+
+## Example Request
+
+```bash
+curl -X GET 'http://localhost:3000/usernames/check?username=adebayo'
+```
+
+### Response
+
+```json
+{
+  "available": true,
+  "username": "adebayo"
+}
+```
+
+---
+
+## Database
+
+Username lives on the `users` table as `varchar(30)`, nullable and uniquely indexed:
+
+| Column | Type | Default |
+|--------|------|---------|
+| `username` | varchar(30) | null |
+
+```sql
+CREATE UNIQUE INDEX users_username_unique_idx ON users (username) WHERE username IS NOT NULL;
+```
+
+---
+
+# Search Feature
+
+## Overview
+
+Public profile search endpoint that allows visitors to find published user profiles by full name or username using PostgreSQL `pg_trgm` trigram similarity matching.
+
+---
+
+## Endpoint
+
+```
+GET /search?q={query}
+```
+
+- Publicly accessible — no authentication required
+- Rate limited to 60 requests per minute per IP
+
+---
+
+## Query Parameter
+
+| Parameter | Type   | Required | Description                          |
+|-----------|--------|----------|--------------------------------------|
+| `q`       | string | Yes      | Search term. Minimum 2 characters, maximum 100 characters |
+
+---
+
+## Response
+
+### Success `200`
+
+```json
+{
+  "success": true,
+  "data": {
+    "results": [
+      {
+        "username": "adebayo",
+        "fullName": "Adebayo Johnson",
+        "bio": "Backend engineer and product builder.",
+        "photoUrl": "https://example.com/adebayo.jpg",
+        "isVerified": false
+      }
+    ],
+    "total": 1
+  }
+}
+```
+
+### Result shape per item
+
+| Field        | Type            | Description                          |
+|--------------|-----------------|--------------------------------------|
+| `username`   | string          | Unique profile username              |
+| `fullName`   | string          | Full display name                    |
+| `bio`        | string or null  | Profile bio, truncated to 120 chars  |
+| `photoUrl`   | string or null  | Profile photo URL                    |
+| `isVerified` | boolean         | Whether the profile is verified      |
+
+### Empty results `200`
+
+```json
+{
+  "success": true,
+  "data": {
+    "results": [],
+    "total": 0
+  }
+}
+```
+
+Frontend handles the empty state UI.
+
+### Validation error `400`
+
+Returned when `q` is missing, under 2 characters, or blank after trimming.
+
+```json
+{
+  "success": false,
+  "error": "Please enter at least 2 characters to search."
+}
+```
+
+---
+
+## Search Logic
+
+- Uses PostgreSQL `pg_trgm` trigram similarity across `full_name` and `username` columns
+- Case-insensitive matching
+- Partial matches supported — e.g. searching `ade` returns `Adebayo`, `Adeola`, etc.
+- Only profiles where `is_published = true` are included
+- Soft-deleted profiles (`deleted_at IS NOT NULL`) are excluded
+- Results ordered by similarity score descending — most relevant first
+- Exact `username` matches are boosted above partial matches
+- Maximum 20 results returned per query
+
+---
+
+## Rate Limiting
+
+| Header                  | Value         |
+|-------------------------|---------------|
+| `x-ratelimit-limit`     | 60            |
+| `x-ratelimit-remaining` | 59 (example)  |
+| `x-ratelimit-reset`     | 60 (seconds)  |
+
+---
+
+## Architecture
+
+```
+Controller  (GET /search)
+    ↓
+SearchService  (input validation + orchestration)
+    ↓
+SearchAction  (DB query logic — pg_trgm)
+    ↓
+TypeORM → PostgreSQL
+```
+
+### Files
+
+| File | Responsibility |
+|------|---------------|
+| `src/modules/search/search.controller.ts` | Route, public decorator, throttle guard |
+| `src/modules/search/search.service.ts` | Validates input, calls action, formats response |
+| `src/modules/search/actions/search.action.ts` | All DB logic — trigram query, ordering, limit |
+| `src/modules/search/dto/search-query.dto.ts` | Validates and transforms `q` |
+| `src/modules/search/search.module.ts` | Module wiring |
+| `src/database/migrations/1778520370661-AddProfileSearchFields.ts` | Adds columns, installs `pg_trgm`, creates GIN indexes |
+
+---
+
+## Database Migration
+
+Adds the following to the `users` table:
+
+| Column         | Type           | Default |
+|----------------|----------------|---------|
+| `username`     | varchar(100)   | null    |
+| `bio`          | text           | null    |
+| `photo_url`    | varchar(500)   | null    |
+| `is_published` | boolean        | false   |
+
+### Indexes created
+
+```sql
+-- Trigram indexes for similarity search
+CREATE INDEX users_full_name_trgm_idx ON users USING GIN (full_name gin_trgm_ops);
+CREATE INDEX users_username_trgm_idx  ON users USING GIN (username gin_trgm_ops);
+
+-- Unique index on username
+CREATE UNIQUE INDEX users_username_unique_idx ON users (username) WHERE username IS NOT NULL;
+```
+
+---
+
+## Example Request
+
+```bash
+curl -X GET 'http://localhost:3000/search?q=ade' \
+  -H 'accept: */*'
+```
+
+### Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "results": [
+      {
+        "username": "adebayo",
+        "fullName": "Adebayo Johnson",
+        "bio": "Backend engineer and product builder.",
+        "photoUrl": "https://example.com/adebayo.jpg",
+        "isVerified": false
+      }
+    ],
+    "total": 1
+  }
+}
+```
+
+---
+
+## Validation
+
+- `npm run build` — passed
+- `npm test` — passed
+- Live: `GET /search?q=ade` returns correct shape with rate limit headers

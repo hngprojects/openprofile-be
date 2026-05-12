@@ -224,6 +224,14 @@ export class UsersService {
     });
   }
 
+  async clearOtpOnly(userId: string): Promise<void> {
+    await this.userModelAction.update({
+      ...NO_TRANSACTION,
+      identifierOptions: { id: userId },
+      updatePayload: { otpHash: null, otpExpiresAt: null },
+    });
+  }
+
   async linkGoogleAccount(id: string): Promise<void> {
     await this.userModelAction.update({
       ...NO_TRANSACTION,
@@ -258,5 +266,19 @@ export class UsersService {
     console.log(
       `OAuth login: userId=${userId} provider=${provider} ip=${ipAddress} time=${new Date().toISOString()}`,
     );
+  }
+
+  async findLatestActiveByUserId(
+    userId: string,
+  ): Promise<ResetPassword | null> {
+    return this.resetPasswordAction.findByUserId(userId);
+  }
+
+  async invalidateAllByUserId(userId: string): Promise<void> {
+    await this.resetPasswordAction.invalidateAllByUserId(userId);
+  }
+
+  async findByUsername(username: string): Promise<User | null> {
+    return await this.userModelAction.findByUsername(username);
   }
 }
