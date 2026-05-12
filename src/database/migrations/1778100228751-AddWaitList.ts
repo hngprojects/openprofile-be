@@ -5,7 +5,7 @@ export class AddWaitList1778100228751 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
-      CREATE TABLE "waitList" (
+      CREATE TABLE IF NOT EXISTS "waitList" (
         "id" uuid NOT NULL DEFAULT gen_random_uuid(),
         "email" character varying NOT NULL,
         "emailSent" boolean NOT NULL DEFAULT false,
@@ -27,7 +27,7 @@ export class NormalizeWaitlistEmailCase1778100228752 implements MigrationInterfa
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Drop the existing case-sensitive unique constraint
     await queryRunner.query(`
-      ALTER TABLE "waitList" DROP CONSTRAINT "UQ_waitlist_email"
+      ALTER TABLE "waitList" DROP CONSTRAINT IF EXISTS "UQ_waitlist_email"
     `);
 
     // Lowercase all existing emails
@@ -37,12 +37,12 @@ export class NormalizeWaitlistEmailCase1778100228752 implements MigrationInterfa
 
     // Add case-insensitive unique index on lower(email)
     await queryRunner.query(`
-      CREATE UNIQUE INDEX "UQ_waitlist_email_lower" ON "waitList" (lower(email))
+      CREATE UNIQUE INDEX IF NOT EXISTS "UQ_waitlist_email_lower" ON "waitList" (lower(email))
     `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX "UQ_waitlist_email_lower"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "UQ_waitlist_email_lower"`);
     await queryRunner.query(`
       ALTER TABLE "waitList" ADD CONSTRAINT "UQ_waitlist_email" UNIQUE (email)
     `);
