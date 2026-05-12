@@ -366,14 +366,18 @@ export class AuthService {
     if (new Date() > user.otpExpiresAt) {
       throw new GoneException({
         errorCode: 'OTP_EXPIRED',
-        message: 'Your verification code has expired. Please request a new one.',
+        message:
+          'Your verification code has expired. Please request a new one.',
       });
     }
 
     const isValid = await argon2.verify(user.otpHash, dto.otp);
     if (!isValid) {
       // Invalidate the OTP after too many wrong attempts to prevent brute force.
-      const attempts = await this.redisService.increment(attemptsKey, OTP_TTL_MS / 1000);
+      const attempts = await this.redisService.increment(
+        attemptsKey,
+        OTP_TTL_MS / 1000,
+      );
       if (attempts >= BRUTE_MAX_ATTEMPTS) {
         await this.usersService.clearOtpOnly(user.id);
         await this.redisService.del(attemptsKey);
@@ -408,7 +412,8 @@ export class AuthService {
       throw new HttpException(
         {
           errorCode: 'TOKEN_INVALID',
-          message: 'This reset token is invalid or has expired. Please start over.',
+          message:
+            'This reset token is invalid or has expired. Please start over.',
         },
         HttpStatus.BAD_REQUEST,
       );
@@ -419,7 +424,8 @@ export class AuthService {
       throw new HttpException(
         {
           errorCode: 'TOKEN_INVALID',
-          message: 'This reset token is invalid or has expired. Please start over.',
+          message:
+            'This reset token is invalid or has expired. Please start over.',
         },
         HttpStatus.BAD_REQUEST,
       );
@@ -438,7 +444,8 @@ export class AuthService {
 
     return {
       status: 'success',
-      message: 'Your password has been updated. Please log in with your new password.',
+      message:
+        'Your password has been updated. Please log in with your new password.',
     };
   }
 
@@ -702,5 +709,60 @@ export class AuthService {
     return {
       message: 'OTP has been sent successfully',
     };
+  }
+
+  // Additional Services for Oauth state implementation
+  async createOauthState(
+    provider: string,
+    meta: Record<string, unknown> = {},
+    ttlSeconds = 300,
+  ): Promise<string> {
+    const state = crypto.randomBytes(24).toString('hex');
+    const key = `oauth:${provider}:state:${state}`;
+    const payload = JSON.stringify({ meta, createdAt: Date.now() });
+    await this.redisService.set(key, payload, ttlSeconds);
+    this.logger.debug(`[OAuth] State created for ${provider}`, {
+      stateSample: state.slice(0, 8),
+      ttl: ttlSeconds,
+    });
+    return state;
+  }
+
+  async consumeOauthState(
+    provider: string,
+    state: string,
+  ): Promise<{ meta: Record<string, unknown>; createdAt: number } | null> {
+    const key = `oauth:${provider}:state:${state}`;
+    const raw = await this.redisService.get(key);
+
+    if (!raw) {
+      this.logger.warn(`[OAuth] Invalid or expired state attempted`, {
+        provider,
+        stateSample: state.slice(0, 8),
+        reason: 'state_not_found',
+      });
+      return null;
+    }
+
+    let parsed: { meta: Record<string, unknown>; createdAt: number };
+    try {
+      parsed = JSON.parse(raw);
+    } catch (err) {
+      this.logger.error(`[OAuth] Failed to parse state payload`, {
+        provider,
+        stateSample: state.slice(0, 8),
+      });
+      await this.redisService.del(key);
+      return null;
+    }
+
+    // Consume state (delete from Redis) to prevent replay
+    await this.redisService.del(key);
+    this.logger.debug(`[OAuth] State consumed successfully for ${provider}`, {
+      stateSample: state.slice(0, 8),
+      age: Date.now() - parsed.createdAt,
+    });
+
+    return parsed;
   }
 }
