@@ -23,6 +23,7 @@ import { QueueModule } from './modules/queue/queue.module';
 import { MailModule } from './modules/mail/mail.module';
 import {UsernamesModule} from './modules/usernames/usernames.module';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { ProfileModule } from './modules/profile/profile.module';
 import { SearchModule } from './modules/search/search.module';
 import { ProfileModule } from './modules/profile/profile.module';
 
@@ -48,6 +49,7 @@ import { ProfileModule } from './modules/profile/profile.module';
     UsersModule,
     AuthModule,
     MailModule,
+    ProfileModule
     SearchModule,
     UsernamesModule,
     ProfileModule
