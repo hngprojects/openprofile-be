@@ -3,19 +3,47 @@ name: CI/CD Pipeline
 on:
   push:
     branches:
-      - feat/cicd-setup
+      - feat/cd-pipeline
       - dev
       - staging
       - main
 
   pull_request:
     branches:
-      - feat/cicd-setup
+      - feat/cd-pipeline
       - dev
       - staging
       - main
-
 jobs:
+  # ─── Security scanning (runs in parallel with CI) ────────────────────────────
+  security-scan:
+    name: Security — Trivy & SARIF
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write   # needed to upload SARIF to GitHub Security tab
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Filesystem scan — catches secrets, misconfigs, and known CVEs in deps
+      - name: Run Trivy filesystem scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          exit-code: 0           # don't fail the pipeline; let GitHub surface it
+
+      - name: Upload SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif
+
+# ─── CI — Lint, Test, Build ───────
   ci:
     name: CI — Lint, Test & Build
     runs-on: ubuntu-latest
@@ -52,10 +80,9 @@ jobs:
       JWT_REFRESH_SECRET: ci-only-refresh-secret-minimum-32-chars
       JWT_RESET_SECRET: ci-only-refresh-secret-minimum-32-chars
       APP_URL: http://localhost:3000
-      MAIL_PORT: 465
-      MAIL_FROM: test@test.com
+      RESEND_API_KEY: your_resend_api_key
+      MAIL_FROM: 'test@test.com'
       MAIL_SECURE: true
-      RESEND_API_KEY: some-api-key
       FRONTEND_URL: http://localhost:3000
       CLIENT_ID: test-client-id
       CLIENT_SECRET: test-client-secret
@@ -87,7 +114,7 @@ jobs:
 
   deploy-staging:
     name: Deploy — Staging
-    needs: ci
+    needs: [security-scan, ci]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/staging' && github.event_name == 'push'
     environment: staging
@@ -121,35 +148,38 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASSWORD }}
+          source: "./"
+          target: /var/www/openprofile-be/staging
+
+      - name: Copy env, install, build, migrate, and restart
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
           script: |
-            cd /var/www/openprofile-be/staging
+            set -e
+            cd /var/www/openprofile-be
+
+            # Env file
+            cp envfile/.env.staging staging/.env
+
+            cd staging
+
             npm install
             npm run build
 
-      - name: Run migrations if changed
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          password: ${{ secrets.SERVER_PASSWORD }}
-          script: |
-            cd /var/www/openprofile-be/staging
-            git diff --name-only HEAD~1 HEAD | grep -q 'src/database/migrations' && npm run migration:run || echo "No migration changes, skipping"
+            # Run migrations
+            npm run migration:run
 
-      - name: Start app with PM2
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          password: ${{ secrets.SERVER_PASSWORD }}
-          script: |
-            cd /var/www/openprofile-be/staging
             pm2 restart openprofile-staging-be || pm2 start "npm start" --name openprofile-staging-be
             pm2 save
 
+  
+  # ─── Deploy — Main (Production) ───────────────
   deploy-main:
     name: Deploy — Main
-    needs: ci
+    needs: [security-scan, ci]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment: main
@@ -184,19 +214,13 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
+            set -e
             cd /var/www/openprofile-be/main
             npm install
             npm run build
-
-      - name: Run migrations if changed
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          password: ${{ secrets.SERVER_PASSWORD }}
-          script: |
-            cd /var/www/openprofile-be/main
-            git diff --name-only HEAD~1 HEAD | grep -q 'src/database/migrations' && npm run migration:run || echo "No migration changes, skipping"
+            
+            # Run migrations
+            npm run migration:run
 
       - name: Start app with PM2
         uses: appleboy/ssh-action@v1.0.3
@@ -205,6 +229,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
+            set -e
             cd /var/www/openprofile-be/main
             pm2 restart openprofile-main-be || pm2 start "npm run start:prod" --name openprofile-main-be
             pm2 save
