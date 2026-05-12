@@ -18,8 +18,13 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     return this.client.get(key);
   }
 
-  async set(key: string, value: string, ttlSeconds: number): Promise<void> {
+  async set(key: string, value: string, ttlSeconds: number, nx = false): Promise<boolean> {
+    if (nx) {
+      const result = await this.client.set(key, value, 'EX', ttlSeconds, 'NX');
+      return result === 'OK';
+    }
     await this.client.set(key, value, 'EX', ttlSeconds);
+    return true;
   }
 
   async increment(key: string, ttlSeconds: number): Promise<number> {

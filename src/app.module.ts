@@ -21,6 +21,7 @@ import { WaitlistModule } from './modules/waitlist/waitlist.module';
 import { UsersModule } from './modules/users/users.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { MailModule } from './modules/mail/mail.module';
+import { ProfileModule } from './modules/profile/profile.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
@@ -45,6 +46,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
     UsersModule,
     AuthModule,
     MailModule,
+    ProfileModule,
   ],
   providers: [
     {
