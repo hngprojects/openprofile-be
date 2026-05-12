@@ -34,7 +34,6 @@ export class ProfileService {
     const cached = await this.redisService.get(cacheKey);
     if (cached) {
       const parsed = JSON.parse(cached) as Record<string, unknown>;
-      // Cached 404 sentinel
       if (parsed['__notFound']) {
         throw new NotFoundException({ error: 'not_found' });
       }
@@ -57,7 +56,6 @@ export class ProfileService {
       });
 
       if (!profile) {
-        // Cache the 404 to reduce DB load on repeated misses.
         await this.redisService.set(
           cacheKey,
           JSON.stringify({ __notFound: true }),
@@ -67,13 +65,13 @@ export class ProfileService {
       }
 
       const components = await this.componentRepo.find({
-        where: { profileId: profile.id, isActive: true },
+        where: { profileId: profile.id, isEnabled: true },
         order: { displayOrder: 'ASC' },
         take: MAX_COMPONENTS,
       });
 
       const activeComponents = components.filter(
-        (c) => c.data && Object.keys(c.data).length > 0,
+        (c) => c.metadata && Object.keys(c.metadata).length > 0,
       );
 
       const responseData = this.serialize(profile, activeComponents);
@@ -101,16 +99,17 @@ export class ProfileService {
   ): Record<string, unknown> {
     return {
       username: profile.username,
-      fullName: profile.user?.fullName ?? null,
+      fullName: profile.fullName ?? profile.user?.fullName ?? null,
       bio: profile.bio,
-      photoUrl: profile.photoUrl,
-      ctaLabel: profile.ctaLabel,
-      ctaUrl: profile.ctaUrl,
+      avatarUrl: profile.avatarUrl,
+      templateId: profile.templateId,
       themeSettings: profile.themeSettings,
       components: components.map((c) => ({
-        type: c.type,
+        sectionType: c.sectionType,
+        title: c.title,
+        content: c.content,
         displayOrder: c.displayOrder,
-        data: c.data,
+        metadata: c.metadata,
       })),
     };
   }

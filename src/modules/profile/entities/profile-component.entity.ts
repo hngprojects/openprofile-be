@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -9,7 +10,8 @@ import {
 } from 'typeorm';
 import { Profile } from './profile.entity';
 
-@Entity('profile_components')
+@Entity('components')
+@Index(['profileId', 'sectionType'], { unique: true })
 export class ProfileComponent {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -21,17 +23,23 @@ export class ProfileComponent {
   @JoinColumn({ name: 'profile_id' })
   profile: Profile;
 
-  @Column({ type: 'varchar', length: 50 })
-  type: string;
+  @Column({ type: 'varchar', length: 50, name: 'section_type' })
+  sectionType: string;
 
-  @Column({ type: 'int', name: 'display_order', default: 0 })
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  title: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  content: string | null;
+
+  @Column({ type: 'jsonb', nullable: true })
+  metadata: Record<string, unknown> | null;
+
+  @Column({ type: 'boolean', name: 'is_enabled', default: true })
+  isEnabled: boolean;
+
+  @Column({ type: 'int', name: 'display_order' })
   displayOrder: number;
-
-  @Column({ type: 'jsonb' })
-  data: Record<string, unknown>;
-
-  @Column({ type: 'boolean', name: 'is_active', default: true })
-  isActive: boolean;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
