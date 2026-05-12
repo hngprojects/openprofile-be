@@ -92,6 +92,21 @@ export class UsersService {
     });
   }
 
+  async markOnboardingComplete(userId: string): Promise<User> {
+    await this.findOne(userId);
+    const updated = await this.userModelAction.update({
+      ...NO_TRANSACTION,
+      identifierOptions: { id: userId },
+      updatePayload: { onboardingComplete: true },
+    });
+    if (!updated) {
+      throw new InternalServerErrorException(
+        'Failed to mark onboarding complete',
+      );
+    }
+    return updated;
+  }
+
   async setRefreshTokenHash(id: string, hash: string | null): Promise<void> {
     await this.userModelAction.update({
       ...NO_TRANSACTION,
