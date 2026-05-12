@@ -24,7 +24,6 @@ import { MailModule } from './modules/mail/mail.module';
 import { ProfileModule } from './modules/profile/profile.module';
 import { UsernamesModule } from './modules/usernames/usernames.module';
 import { ThrottlerModule } from '@nestjs/throttler';
-import { ProfileModule } from './modules/profile/profile.module';
 import { SearchModule } from './modules/search/search.module';
 
 
