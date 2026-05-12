@@ -22,7 +22,9 @@ import { UsersModule } from './modules/users/users.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { MailModule } from './modules/mail/mail.module';
 import { ProfileModule } from './modules/profile/profile.module';
+import { UsernamesModule } from './modules/usernames/usernames.module';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { SearchModule } from './modules/search/search.module';
 
 @Module({
   imports: [
@@ -47,6 +49,8 @@ import { ThrottlerModule } from '@nestjs/throttler';
     AuthModule,
     MailModule,
     ProfileModule,
+    SearchModule,
+    UsernamesModule,
   ],
   providers: [
     {
