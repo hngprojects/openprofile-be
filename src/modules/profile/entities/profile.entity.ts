@@ -17,7 +17,7 @@ export class Profile {
   @Column({ name: 'user_id' })
   userId: string;
 
-  @OneToOne(() => User, { onDelete: 'CASCADE'})
+  @OneToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user: User;
 
@@ -38,6 +38,12 @@ export class Profile {
 
   @Column({ name: 'theme_settings', nullable: true, type: 'jsonb' })
   themeSettings: Record<string, unknown>;
+
+  @Column({ name: 'is_published', default: false })
+  isPublished: boolean;
+
+  @Column({ name: 'published_at', nullable: true, type: 'timestamp' })
+  publishedAt: Date;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
