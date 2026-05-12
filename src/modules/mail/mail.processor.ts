@@ -11,7 +11,10 @@ import { PasswordChangedEmailData } from './interfaces/password-changed-email.in
 import { ResetPasswordEmailData } from './interfaces/reset-password-email.interface';
 import { AccountLockedEmailData } from './interfaces/account-locked-email.interface';
 import { NewIpLoginEmailData } from './interfaces/new-ip-login-email.interface';
-import { renderVerificationOtpEmail } from './verification-otp.template';
+import { renderVerificationOtpEmail } from './templates/verification-otp.template';
+import { renderPasswordChangedEmail } from './templates/password-changed.template';
+import { renderAccountLockedEmail } from './templates/account-locked.template';
+import { renderNewIpLoginEmail } from './templates/new-ip-login.template';
 
 @Processor(QUEUE_NAMES.EMAIL)
 export class MailProcessor extends WorkerHost {
@@ -67,35 +70,29 @@ export class MailProcessor extends WorkerHost {
 
   private async handleSendPasswordChangedEmail(data: PasswordChangedEmailData) {
     const subject = 'Your Open Profile password has been changed';
-    const html = `
-      <p>Your password has been successfully changed.</p>
-      <p>If you did not make this change, please contact support immediately.</p>
-    `;
+
+    const html = renderPasswordChangedEmail();
+
     await this.mailService.sendEmail(data.to, subject, html);
   }
 
   private async handleAccountLockedEmail(data: AccountLockedEmailData) {
     const { to, lockedUntil } = data;
+
     const subject = 'Unusual sign-in activity on your Open Profile account';
-    const html = `
-      <p>Your Open Profile account has been temporarily locked after multiple failed sign-in attempts.</p>
-      <p>Your account will be automatically unlocked at <strong>${lockedUntil}</strong>.</p>
-      <p>If you did not make these attempts, please reset your password immediately.</p>
-      <p>The Open Profile Team</p>
-    `;
+
+    const html = renderAccountLockedEmail(lockedUntil);
+
     await this.mailService.sendEmail(to, subject, html);
   }
 
   private async handleNewIpLoginEmail(data: NewIpLoginEmailData) {
     const { to, ip, timestamp } = data;
+
     const subject = 'New sign-in to your Open Profile account';
-    const html = `
-      <p>A sign-in to your Open Profile account was detected from a new IP address.</p>
-      <p><strong>IP address:</strong> ${ip}</p>
-      <p><strong>Time:</strong> ${timestamp}</p>
-      <p>If this was not you, please reset your password immediately.</p>
-      <p>The Open Profile Team</p>
-    `;
+
+    const html = renderNewIpLoginEmail(ip, timestamp);
+
     await this.mailService.sendEmail(to, subject, html);
   }
 
@@ -104,7 +101,7 @@ export class MailProcessor extends WorkerHost {
     otp: string;
     fullName: string;
   }) {
-    const html = renderVerificationOtpEmail(data.otp, data.fullName);
+    const html = renderVerificationOtpEmail(data.fullName, data.otp);
 
     await this.mailService.sendEmail(data.to, OTP_EMAIL_SUBJECT, html);
   }

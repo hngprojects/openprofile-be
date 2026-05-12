@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { env } from '../../config/env';
-import { renderVerificationOtpEmail } from './verification-otp.template';
-import { renderPasswordResetOtpEmail } from './reset-password-otp.template';
+import { renderVerificationOtpEmail } from './templates/verification-otp.template';
+import { renderPasswordResetOtpEmail } from './templates/reset-password-otp.template';
 import { Resend } from 'resend';
 
 export const OTP_EMAIL_SUBJECT = 'Verify your Open Profile account';
