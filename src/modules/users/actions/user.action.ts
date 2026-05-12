@@ -20,4 +20,8 @@ export class UserModelAction extends AbstractModelAction<User> {
   createQueryBuilder(alias: string) { //
     return this.repository.createQueryBuilder(alias);
   }
+
+  async findByUsername(username: string): Promise<User | null> {
+    return this.get({ identifierOptions: { username } });
+  }
 }

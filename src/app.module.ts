@@ -21,6 +21,7 @@ import { WaitlistModule } from './modules/waitlist/waitlist.module';
 import { UsersModule } from './modules/users/users.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { MailModule } from './modules/mail/mail.module';
+import {UsernamesModule} from './modules/usernames/usernames.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { SearchModule } from './modules/search/search.module';
 
@@ -47,6 +48,7 @@ import { SearchModule } from './modules/search/search.module';
     AuthModule,
     MailModule,
     SearchModule,
+    UsernamesModule,
   ],
   providers: [
     {

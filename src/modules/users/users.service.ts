@@ -262,4 +262,8 @@ export class UsersService {
   async invalidateAllByUserId(userId: string): Promise<void> {
     await this.resetPasswordAction.invalidateAllByUserId(userId);
   }
+
+  async findByUsername(username: string): Promise<User | null> {
+    return await this.userModelAction.findByUsername(username);
+  }
 }
