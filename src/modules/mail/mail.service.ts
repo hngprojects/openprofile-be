@@ -47,12 +47,17 @@ export class MailService {
   ): Promise<void> {
     this.logger.log(`Sending OTP email to ${toEmail}`);
 
-    await this.resend.emails.send({
+    try{
+      await this.resend.emails.send({
       from: env.MAIL_FROM,
       to: toEmail,
       subject: OTP_EMAIL_SUBJECT,
       html: renderVerificationOtpEmail(fullName, otp),
     });
+    } catch (error: unknown) {
+      this.logger.error(`Failed to send OTP email to ${toEmail}: ${error instanceof Error ? error.message : String(error)}`);
+      throw error; 
+    }
 
     this.logger.log(`OTP email delivered to ${toEmail}`);
   }

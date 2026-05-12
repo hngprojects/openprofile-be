@@ -1,9 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
 import { UsernamesService } from './usernames.service';
-import { UsersService } from '../users/users.service';
+import { Profile } from '../profile/entities/profile.entity';
 
-const mockUsersService = {
-  findByUsername: jest.fn(),
+const mockProfileRepository = {
+  findOne: jest.fn(),
 };
 
 describe('UsernamesService', () => {
@@ -13,17 +14,17 @@ describe('UsernamesService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UsernamesService,
-        { provide: UsersService, useValue: mockUsersService },
+        { provide: getRepositoryToken(Profile), useValue: mockProfileRepository },
       ],
     }).compile();
 
     service = module.get<UsernamesService>(UsernamesService);
-    mockUsersService.findByUsername.mockReset();
+    mockProfileRepository.findOne.mockReset();
   });
 
   describe('normalization', () => {
     it('trims and lowercases before checking', async () => {
-      mockUsersService.findByUsername.mockResolvedValue(null);
+      mockProfileRepository.findOne.mockResolvedValue(null);
       const result = await service.check('  John-Doe  ');
       expect(result).toMatchObject({
         available: true,
@@ -50,7 +51,7 @@ describe('UsernamesService', () => {
     });
 
     it('accepts valid usernames', async () => {
-      mockUsersService.findByUsername.mockResolvedValue(null);
+      mockProfileRepository.findOne.mockResolvedValue(null);
       const result = await service.check('valid-user123');
       expect(result).toMatchObject({ available: true });
     });
@@ -60,13 +61,13 @@ describe('UsernamesService', () => {
     it('returns INVALID_FORMAT for reserved names (not RESERVED, per RFC §5)', async () => {
       const result = await service.check('admin');
       expect(result).toEqual({ available: false, reason: 'INVALID_FORMAT' });
-      expect(mockUsersService.findByUsername).not.toHaveBeenCalled();
+      expect(mockProfileRepository.findOne).not.toHaveBeenCalled();
     });
   });
 
   describe('database check', () => {
     it('returns TAKEN when username exists in DB', async () => {
-      mockUsersService.findByUsername.mockResolvedValue({
+      mockProfileRepository.findOne.mockResolvedValue({
         id: '1',
         username: 'taken-user',
       });
@@ -75,7 +76,7 @@ describe('UsernamesService', () => {
     });
 
     it('returns available when username is free', async () => {
-      mockUsersService.findByUsername.mockResolvedValue(null);
+      mockProfileRepository.findOne.mockResolvedValue(null);
       const result = await service.check('free-user');
       expect(result).toMatchObject({
         available: true,
