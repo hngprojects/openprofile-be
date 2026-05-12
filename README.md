@@ -290,7 +290,139 @@ UNLICENSED
 
 
 
-New Search Feature section 
+# Usernames Feature
+
+## Overview
+
+Availability checking for user-chosen profile usernames. The feature enforces strict validation rules (format, length, reserved words, homoglyph protection) and is rate-limited to prevent abuse.
+
+---
+
+## Endpoints
+
+### `GET /usernames/check` (Public, Rate-Limited)
+
+| Attribute   | Value |
+|-------------|-------|
+| Auth        | None (public) |
+| Rate limit  | 60 req/min/IP (Redis, in-memory fallback) |
+| Query param | `username` (string, required) |
+
+**Success `200`:**
+```json
+{
+  "available": true,
+  "username": "normalized-username"
+}
+```
+
+**Taken `409`:**
+```json
+{
+  "statusCode": 409,
+  "error": "USERNAME_TAKEN",
+  "message": "Username is already taken"
+}
+```
+
+**Invalid `400`:**
+```json
+{
+  "statusCode": 400,
+  "error": "INVALID_FORMAT",
+  "message": "Username must be 3-30 characters, only lowercase letters, digits, and hyphens"
+}
+```
+
+### `GET /usernames/check/internal` (Authenticated, No Rate Limit)
+
+Same behavior as the public endpoint but requires a Bearer JWT and bypasses the rate-limit guard. Useful for server-to-server checks.
+
+---
+
+## Validation Rules
+
+| Rule | Detail |
+|------|--------|
+| Min length | 3 characters |
+| Max length | 30 characters |
+| Allowed chars | `a-z`, `0-9`, hyphens (`-`) |
+| Leading/trailing hyphen | Not allowed |
+| Consecutive hyphens | Not allowed (e.g. `co--ol`) |
+| Ambiguous unicode | Cyrillic, Greek, CJK blocked |
+| Reserved names | ~50 reserved keywords (`admin`, `api`, `test`, etc.) |
+| Uniqueness | Must not exist in `users` table |
+
+---
+
+## Rate Limiting
+
+| Header | Value |
+|--------|-------|
+| `x-ratelimit-limit` | 60 |
+| `x-ratelimit-remaining` | 59 (example) |
+| `x-ratelimit-reset` | 60 (seconds) |
+
+If Redis is unreachable, falls back to an in-memory store with a 10 req/min/IP limit.
+
+---
+
+## Architecture
+
+```
+Controller  (GET /usernames/check)
+    ↓
+UsernamesService  (normalize → validate → check DB)
+    ↓
+UsersService → UserModelAction  (DB lookup)
+    ↓
+TypeORM → PostgreSQL
+```
+
+### Files
+
+| File | Responsibility |
+|------|----------------|
+| `src/modules/usernames/usernames.controller.ts` | Routes, public decorator, rate-limit guard |
+| `src/modules/usernames/usernames.service.ts` | Core logic: normalization, validation, DB uniqueness check |
+| `src/modules/usernames/dto/check-username.dto.ts` | Validates the `username` query parameter |
+| `src/modules/usernames/guards/username-rate-limit.guard.ts` | Redis-backed rate limiter with in-memory fallback |
+| `src/modules/usernames/data/reserved-keywords.ts` | Set of ~50 reserved usernames |
+| `src/modules/usernames/username.service.spec.ts` | Unit tests |
+
+---
+
+## Example Request
+
+```bash
+curl -X GET 'http://localhost:3000/usernames/check?username=adebayo'
+```
+
+### Response
+
+```json
+{
+  "available": true,
+  "username": "adebayo"
+}
+```
+
+---
+
+## Database
+
+Username lives on the `users` table as `varchar(30)`, nullable and uniquely indexed:
+
+| Column | Type | Default |
+|--------|------|---------|
+| `username` | varchar(30) | null |
+
+```sql
+CREATE UNIQUE INDEX users_username_unique_idx ON users (username) WHERE username IS NOT NULL;
+```
+
+---
+
 # Search Feature
 
 ## Overview
