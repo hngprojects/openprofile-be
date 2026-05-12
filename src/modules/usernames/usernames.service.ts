@@ -1,8 +1,6 @@
-import {
-    Injectable
-  } from '@nestjs/common';
-  import { UsersService } from '../users/users.service';
-  import { RESERVED_USERNAMES } from './data/reserved-keywords';
+import { Injectable } from '@nestjs/common';
+import { UsersService } from '../users/users.service';
+import { RESERVED_USERNAMES } from './data/reserved-keywords';
 
 // Unicode ranges to reject (homoglyph attack prevention)
 /**
@@ -26,43 +24,39 @@ export type UsernameCheckResult =
   | { available: true; normalizedUsername: string }
   | { available: false; reason: 'INVALID_FORMAT' | 'RESERVED' | 'TAKEN' };
 
+@Injectable()
+export class UsernamesService {
+  constructor(private readonly usersService: UsersService) {}
 
-  @Injectable()
-  export class UsernamesService {
-    constructor(private readonly usersService: UsersService) {}
-  
-    async check(rawUsername: string): Promise<UsernameCheckResult> {
-  
-      const normalized = rawUsername.trim().toLowerCase();
-  
-      if (AMBIGUOUS_UNICODE_REGEX.test(normalized)) {
-        return { available: false, reason: 'INVALID_FORMAT' };
-      }
-  
+  async check(rawUsername: string): Promise<UsernameCheckResult> {
+    const normalized = rawUsername.trim().toLowerCase();
 
-      if (normalized.length < 3 || normalized.length > 30) {
-        return { available: false, reason: 'INVALID_FORMAT' };
-      }
-  
-     
-      if (!FORMAT_REGEX.test(normalized)) {
-        return { available: false, reason: 'INVALID_FORMAT' };
-      }
-  
-      if (/--/.test(normalized)) {
-        return { available: false, reason: 'INVALID_FORMAT' };
-      }
-
-      if (RESERVED_USERNAMES.has(normalized)) {
-        // Return INVALID_FORMAT per RFC §5: do not expose that a name is reserved
-        return { available: false, reason: 'INVALID_FORMAT' };
-      }
-  
-      const existing = await this.usersService.findByUsername(normalized);
-      if (existing) {
-        return { available: false, reason: 'TAKEN' };
-      }
-  
-      return { available: true, normalizedUsername: normalized };
+    if (AMBIGUOUS_UNICODE_REGEX.test(normalized)) {
+      return { available: false, reason: 'INVALID_FORMAT' };
     }
+
+    if (normalized.length < 3 || normalized.length > 30) {
+      return { available: false, reason: 'INVALID_FORMAT' };
+    }
+
+    if (!FORMAT_REGEX.test(normalized)) {
+      return { available: false, reason: 'INVALID_FORMAT' };
+    }
+
+    if (/--/.test(normalized)) {
+      return { available: false, reason: 'INVALID_FORMAT' };
+    }
+
+    if (RESERVED_USERNAMES.has(normalized)) {
+      // Return INVALID_FORMAT per RFC §5: do not expose that a name is reserved
+      return { available: false, reason: 'INVALID_FORMAT' };
+    }
+
+    const existing = await this.usersService.findByUsername(normalized);
+    if (existing) {
+      return { available: false, reason: 'TAKEN' };
+    }
+
+    return { available: true, normalizedUsername: normalized };
   }
+}

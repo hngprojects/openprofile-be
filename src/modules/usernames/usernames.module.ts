@@ -6,10 +6,7 @@ import { UsernamesController } from './usernames.controller';
 import { UsernamesService } from './usernames.service';
 
 @Module({
-  imports: [
-    UsersModule,       
-    RateLimiterModule, 
-  ],
+  imports: [UsersModule, RateLimiterModule],
   controllers: [UsernamesController],
   providers: [UsernamesService, UsernameRateLimitGuard],
 })

@@ -25,20 +25,23 @@ describe('UsernamesService', () => {
     it('trims and lowercases before checking', async () => {
       mockUsersService.findByUsername.mockResolvedValue(null);
       const result = await service.check('  John-Doe  ');
-      expect(result).toMatchObject({ available: true, normalizedUsername: 'john-doe' });
+      expect(result).toMatchObject({
+        available: true,
+        normalizedUsername: 'john-doe',
+      });
     });
   });
 
   describe('format validation', () => {
     const invalid = [
-      'ab',            
+      'ab',
       'a'.repeat(31),
-      '-starts',       
-      'ends-',         
-      'con--secutive', 
-      'has space',     
+      '-starts',
+      'ends-',
+      'con--secutive',
+      'has space',
       'has_underscore',
-      'Ωmega',         
+      'Ωmega',
     ];
 
     it.each(invalid)('rejects "%s" as INVALID_FORMAT', async (username) => {
@@ -63,7 +66,10 @@ describe('UsernamesService', () => {
 
   describe('database check', () => {
     it('returns TAKEN when username exists in DB', async () => {
-      mockUsersService.findByUsername.mockResolvedValue({ id: '1', username: 'taken-user' });
+      mockUsersService.findByUsername.mockResolvedValue({
+        id: '1',
+        username: 'taken-user',
+      });
       const result = await service.check('taken-user');
       expect(result).toEqual({ available: false, reason: 'TAKEN' });
     });
@@ -71,7 +77,10 @@ describe('UsernamesService', () => {
     it('returns available when username is free', async () => {
       mockUsersService.findByUsername.mockResolvedValue(null);
       const result = await service.check('free-user');
-      expect(result).toMatchObject({ available: true, normalizedUsername: 'free-user' });
+      expect(result).toMatchObject({
+        available: true,
+        normalizedUsername: 'free-user',
+      });
     });
   });
 });
