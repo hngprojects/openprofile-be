@@ -120,9 +120,7 @@ export class AuthController {
       errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
     }),
   )
-  @ApiOperation({
-    summary: 'Verify password reset OTP and receive a reset token',
-  })
+  @ApiOperation({ summary: 'Verify password reset OTP and receive a reset token' })
   verifyResetOtp(@Body() dto: VerifyResetOtpDto) {
     return this.authService.verifyResetOtp(dto);
   }
@@ -135,9 +133,7 @@ export class AuthController {
       errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
     }),
   )
-  @ApiOperation({
-    summary: 'Reset password using reset token from verify-reset-otp',
-  })
+  @ApiOperation({ summary: 'Reset password using reset token from verify-reset-otp' })
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
   }
@@ -163,56 +159,59 @@ export class AuthController {
   }
 
   // google routes
+  @Public()
   @Get('google')
-  @Public()
-  @Throttle({ default: { ttl: 900_000, limit: 10 } })
-  @UseGuards(ThrottlerGuard)
-  async googleAuth(@Req() req: Request, @Res() res: Response) {
-    const state = await this.authService.createOauthState(
-      'google',
-      { ip: req.ip },
-      300,
-    ); // 5 minutes
-    const params = new URLSearchParams({
-      client_id: env.CLIENT_ID,
-      redirect_uri: env.GOOGLE_CALLBACK_URL,
-      response_type: 'code',
-      scope: 'email profile',
-      state,
-      access_type: 'offline',
-    });
-    return res.redirect(
-      `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`,
-    );
-  }
-
-  @Get('google/callback')
-  @Public()
-  @Throttle({ default: { ttl: 900_000, limit: 10 } })
+  @Throttle({
+    default: {
+      ttl: 900_000,
+      limit: 10,
+    },
+  })
   @UseGuards(ThrottlerGuard, GoogleAuthGuard)
+  @ApiOperation({ summary: 'Google login endpoint' })
+  googleAuth() {}
+
+  @Public()
+  @Get('google/callback')
+  @Throttle({
+    default: {
+      ttl: 900_000,
+      limit: 10,
+    },
+  })
+  @UseGuards(ThrottlerGuard, GoogleAuthGuard)
+  @ApiOperation({ summary: 'Google callback endpoint' })
   async googleCallback(@Req() req: GoogleAuthRequest, @Res() res: Response) {
-    const state = (req.query?.state as string | undefined) ?? null;
-    if (!state) {
-      const errorUrl = `${env.FRONTEND_URL}/auth?error=AUTH_FAILED&message=Missing%20state`;
-      return res.redirect(302, errorUrl);
-    }
+    try {
+      /**
+       * req.user comes from GoogleStrategy validate()
+       * req.ip contains the client IP address
+       */
+      const response = await this.authService.loginGoogle(req.user, req.ip);
 
-    const entry = await this.authService.consumeOauthState('google', state);
-    if (!entry) {
-      const errorUrl = `${env.FRONTEND_URL}/auth?error=AUTH_FAILED&message=Invalid%20or%20expired%20state`;
-      return res.redirect(302, errorUrl);
-    }
+      /**
+       * Set secure HTTP-only cookies for tokens
+       */
+      setAuthCookies(res, {
+        accessToken: response.accessToken,
+        refreshToken: response.refreshToken,
+      });
 
-    // Proceed with existing flow (req.user comes from GoogleStrategy.validate())
-    const response = await this.authService.loginGoogle(req.user, req.ip);
-    setAuthCookies(res, {
-      accessToken: response.accessToken,
-      refreshToken: response.refreshToken,
-    });
-    const redirectUrl = response.isNewUser
-      ? `${env.FRONTEND_URL}/onboarding`
-      : `${env.FRONTEND_URL}/dashboard`;
-    return res.redirect(302, redirectUrl);
+      /**
+       * Redirect to onboarding for new users, dashboard for returning users
+       */
+      const redirectUrl = response.isNewUser
+        ? `${env.FRONTEND_URL}/onboarding`
+        : `${env.FRONTEND_URL}/dashboard`;
+
+      res.redirect(302, redirectUrl);
+    } catch {
+      /**
+       * Redirect to frontend with error on OAuth failure
+       */
+      const errorUrl = `${env.FRONTEND_URL}/auth?error=AUTH_FAILED&message=Google%20authentication%20failed.%20Please%20try%20again.`;
+      res.redirect(302, errorUrl);
+    }
   }
 
   @Public()
