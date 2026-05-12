@@ -23,7 +23,10 @@ import { QueueModule } from './modules/queue/queue.module';
 import { MailModule } from './modules/mail/mail.module';
 import {UsernamesModule} from './modules/usernames/usernames.module';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { ProfileModule } from './modules/profile/profile.module';
 import { SearchModule } from './modules/search/search.module';
+import { ContactModule } from './modules/contact/contact.module';
+
 
 @Module({
   imports: [
@@ -47,8 +50,10 @@ import { SearchModule } from './modules/search/search.module';
     UsersModule,
     AuthModule,
     MailModule,
+    ProfileModule,
     SearchModule,
     UsernamesModule,
+    ContactModule,
   ],
   providers: [
     {
@@ -73,4 +78,4 @@ import { SearchModule } from './modules/search/search.module';
     { provide: APP_INTERCEPTOR, useClass: TransformInterceptor },
   ],
 })
-export class AppModule {}
+export class AppModule { }
