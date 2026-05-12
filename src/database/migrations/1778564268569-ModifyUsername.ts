@@ -4,7 +4,7 @@ export class ModifyUsername1778564268569 implements MigrationInterface {
     name = 'ModifyUsername1778564268569'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`DROP INDEX "public"."users_username_unique_idx"`);
+        await queryRunner.query(`DROP INDEX IF EXISTS "public"."users_username_unique_idx"`);
         await queryRunner.query(`DROP INDEX "public"."users_full_name_trgm_idx"`);
         await queryRunner.query(`DROP INDEX "public"."users_username_trgm_idx"`);
         await queryRunner.query(`DROP INDEX "public"."IDX_reset_password_tokenSelector"`);
