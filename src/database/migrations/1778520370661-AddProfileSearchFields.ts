@@ -20,10 +20,16 @@ export class AddProfileSearchFields1779000000000 implements MigrationInterface {
       WHERE username IS NOT NULL
     `);
 
-    await queryRunner.query(`
-      CREATE INDEX IF NOT EXISTS users_full_name_trgm_idx
-      ON users USING GIN (full_name gin_trgm_ops)
-    `);
+    // Check if full_name column exists before creating index
+    const table = await queryRunner.getTable("users");
+    const fullNameColumn = table?.findColumnByName("full_name");
+    
+    if (fullNameColumn) {
+      await queryRunner.query(`
+        CREATE INDEX IF NOT EXISTS users_full_name_trgm_idx
+        ON users USING GIN (full_name gin_trgm_ops)
+      `);
+    }
 
     await queryRunner.query(`
       CREATE INDEX IF NOT EXISTS users_username_trgm_idx
