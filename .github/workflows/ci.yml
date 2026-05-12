@@ -36,6 +36,7 @@ jobs:
       JWT_RESET_SECRET: ci-only-not-a-real-secret-reset-key-min-32-chars-x
       REDIS_URL: redis://localhost:6379
       APP_URL: http://localhost:3000
+      CONTACT_EMAIL: 'test@test.com'
 
       RESEND_API_KEY: your_resend_api_key
       MAIL_FROM: 'test@test.com'

@@ -10,10 +10,10 @@ export class UpdateResetPasswordTokenFields1778400000001
       `ALTER TABLE "reset_password" ALTER COLUMN "tokenHash" TYPE text`,
     );
     await queryRunner.query(
-      `ALTER TABLE "reset_password" ADD COLUMN "tokenSelector" character varying(64) NOT NULL DEFAULT ''`,
+      `ALTER TABLE "reset_password" ADD COLUMN IF NOT EXISTS "tokenSelector" character varying(64) NOT NULL DEFAULT ''`,
     );
     await queryRunner.query(
-      `CREATE UNIQUE INDEX "IDX_reset_password_tokenSelector" ON "reset_password" ("tokenSelector")`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS "IDX_reset_password_tokenSelector" ON "reset_password" ("tokenSelector")`,
     );
   }
 
@@ -22,7 +22,7 @@ export class UpdateResetPasswordTokenFields1778400000001
       `DROP INDEX IF EXISTS "IDX_reset_password_tokenSelector"`,
     );
     await queryRunner.query(
-      `ALTER TABLE "reset_password" DROP COLUMN "tokenSelector"`,
+      `ALTER TABLE "reset_password" DROP COLUMN IF EXISTS "tokenSelector"`,
     );
     await queryRunner.query(
       `ALTER TABLE "reset_password" ALTER COLUMN "tokenHash" TYPE character varying(64)`,

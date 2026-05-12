@@ -22,21 +22,35 @@ export class AddAuthColumn1778323707153 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "otp_expires_at" TIMESTAMP WITH TIME ZONE`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "users" ALTER COLUMN "role" DROP NOT NULL`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "users" ALTER COLUMN "role" DROP DEFAULT`,
-    );
+    
+    // Check if role column exists before modifying it
+    const table = await queryRunner.getTable("users");
+    const roleColumn = table?.findColumnByName("role");
+    
+    if (roleColumn) {
+      await queryRunner.query(
+        `ALTER TABLE "users" ALTER COLUMN "role" DROP NOT NULL`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "users" ALTER COLUMN "role" DROP DEFAULT`,
+      );
+    }
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `ALTER TABLE "users" ALTER COLUMN "role" SET DEFAULT 'user'`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "users" ALTER COLUMN "role" SET NOT NULL`,
-    );
+    // Check if role column exists before modifying it
+    const table = await queryRunner.getTable("users");
+    const roleColumn = table?.findColumnByName("role");
+    
+    if (roleColumn) {
+      await queryRunner.query(
+        `ALTER TABLE "users" ALTER COLUMN "role" SET DEFAULT 'user'`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "users" ALTER COLUMN "role" SET NOT NULL`,
+      );
+    }
+    
     await queryRunner.query(`ALTER TABLE "users" DROP COLUMN "otp_expires_at"`);
     await queryRunner.query(`ALTER TABLE "users" DROP COLUMN "otp_hash"`);
     await queryRunner.query(

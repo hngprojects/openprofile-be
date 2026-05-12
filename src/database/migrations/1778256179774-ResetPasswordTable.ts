@@ -7,9 +7,9 @@ export class ResetPasswordTable1778256179774 implements MigrationInterface {
     // Drop the old email index before modifications
     await queryRunner.query(`DROP INDEX IF EXISTS "public"."IDX_users_email"`);
 
-    // Create the reset_password table
+    // Create the reset_password table (IF NOT EXISTS makes it idempotent)
     await queryRunner.query(
-      `CREATE TABLE "reset_password" ("id" uuid NOT NULL, "userId" character varying NOT NULL, "tokenHash" character varying(64) NOT NULL, "used" boolean NOT NULL DEFAULT false, "expires_at" TIMESTAMP WITH TIME ZONE NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_82bffbeb85c5b426956d004a8f5" PRIMARY KEY ("id"))`,
+      `CREATE TABLE IF NOT EXISTS "reset_password" ("id" uuid NOT NULL, "userId" character varying NOT NULL, "tokenHash" character varying(64) NOT NULL, "used" boolean NOT NULL DEFAULT false, "expires_at" TIMESTAMP WITH TIME ZONE NOT NULL, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_82bffbeb85c5b426956d004a8f5" PRIMARY KEY ("id"))`,
     );
 
     // Remove password reset columns from users (no longer needed in users table)
@@ -22,7 +22,7 @@ export class ResetPasswordTable1778256179774 implements MigrationInterface {
 
     // Recreate the email index
     await queryRunner.query(
-      `CREATE UNIQUE INDEX "IDX_97672ac88f789774dd47f7c8be" ON "users" ("email")`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS "IDX_97672ac88f789774dd47f7c8be" ON "users" ("email")`,
     );
   }
 
