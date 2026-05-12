@@ -70,6 +70,7 @@ jobs:
       FRONTEND_URL: http://localhost:3000
       CLIENT_ID: test-client-id
       CLIENT_SECRET: test-client-secret
+      CONTACT_EMAIL: 'test@test.com'
 
     steps:
       - name: Checkout code
