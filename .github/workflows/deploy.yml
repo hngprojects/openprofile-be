@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: DEPLOY BACKEND Pipeline
 
 on:
   workflow_dispatch:
@@ -217,3 +217,5 @@ jobs:
             cd /var/www/openprofile-be/main
             pm2 restart openprofile-main-be || pm2 start "npm run start:prod" --name openprofile-main-be
             pm2 save
+
+
