@@ -8,11 +8,11 @@ export class ModifyUsername1778564268569 implements MigrationInterface {
         await queryRunner.query(`DROP INDEX IF EXISTS "public"."users_full_name_trgm_idx"`);
         await queryRunner.query(`DROP INDEX IF EXISTS "public"."users_username_trgm_idx"`);
         await queryRunner.query(`DROP INDEX IF EXISTS "public"."IDX_reset_password_tokenSelector"`);
-        await queryRunner.query(`ALTER TABLE "users" DROP COLUMN "password_reset_token_hash"`);
-        await queryRunner.query(`ALTER TABLE "users" DROP COLUMN "password_reset_expires"`);
-        await queryRunner.query(`ALTER TABLE "users" DROP COLUMN "provider"`);
+        await queryRunner.query(`ALTER TABLE "users" DROP COLUMN IF EXISTS "password_reset_token_hash"`);
+        await queryRunner.query(`ALTER TABLE "users" DROP COLUMN IF EXISTS "password_reset_expires"`);
+        await queryRunner.query(`ALTER TABLE "users" DROP COLUMN IF EXISTS "provider"`);
         await queryRunner.query(`ALTER TABLE "waitList" ADD CONSTRAINT "UQ_c964d1d61359c1a9f8aa31eb0c2" UNIQUE ("email")`);
-        await queryRunner.query(`ALTER TABLE "users" DROP COLUMN "username"`);
+        await queryRunner.query(`ALTER TABLE "users" DROP COLUMN IF EXISTS "username"`);
         await queryRunner.query(`ALTER TABLE "users" ADD "username" character varying(30)`);
         await queryRunner.query(`ALTER TABLE "users" ADD CONSTRAINT "UQ_fe0bb3f6520ee0469504521e710" UNIQUE ("username")`);
         await queryRunner.query(`ALTER TABLE "reset_password" ALTER COLUMN "tokenSelector" DROP DEFAULT`);
