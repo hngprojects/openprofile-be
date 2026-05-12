@@ -5,7 +5,7 @@ import {
   HttpStatus,
   Post,
 } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentUser} from '../../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
 import { CreateProfileDto } from './dto/create-profile.dto';
@@ -18,7 +18,11 @@ export class ProfileController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Create a new profile for the authenticated user' })
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Complete onboarding with profile details' })
+  @ApiResponse({ status: 201, description: 'Profile created successfully' })
+  @ApiResponse({ status: 409, description: 'User already has a profile or username is taken' })
+  @ApiResponse({ status: 422, description: 'Invalid username format' })
   async createProfile(
     @Body() createProfileDto: CreateProfileDto,
     @CurrentUser() user: AuthenticatedUser,

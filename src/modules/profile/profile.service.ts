@@ -1,18 +1,21 @@
 import {
   ConflictException,
-  Injectable
+  Injectable,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateProfileDto } from './dto/create-profile.dto';
 import { Profile } from './entities/profile.entity';
 import { AuthenticatedUser } from '../../common/decorators/current-user.decorator';
+import { UsernamesService } from '../usernames/usernames.service';
 
 @Injectable()
 export class ProfileService {
   constructor(
     @InjectRepository(Profile)
     private readonly profileRepository: Repository<Profile>,
+    private readonly usernamesService: UsernamesService,
   ) {}
 
   async createProfile(
@@ -28,19 +31,25 @@ export class ProfileService {
       throw new ConflictException('User already has a profile');
     }
 
-    // Step 2 - check if username is already taken
-    const existingUsername = await this.profileRepository.findOne({
-      where: { username: createProfileDto.username },
-    });
+    // Step 2 - validate username (format, reserved words, availability)
+    const usernameCheck = await this.usernamesService.check(
+      createProfileDto.username,
+    );
 
-    if (existingUsername) {
-      throw new ConflictException('Username already taken');
+    if (!usernameCheck.available) {
+      if (usernameCheck.reason === 'TAKEN') {
+        throw new ConflictException('Username already taken');
+      }
+      throw new UnprocessableEntityException(
+        'Username must be 3-30 characters, use only letters, numbers, and hyphens, ' +
+          'and must not start, end, or contain consecutive hyphens.',
+      );
     }
 
     // Step 3 - create and save the profile
     const profile = this.profileRepository.create({
       userId: user.sub,
-      username: createProfileDto.username.toLowerCase(),
+      username: usernameCheck.normalizedUsername, // already trimmed + lowercased by UsernamesService
       fullName: createProfileDto.fullName,
       bio: createProfileDto.bio,
       photoUrl: createProfileDto.photoUrl,
