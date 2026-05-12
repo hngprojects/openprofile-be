@@ -22,6 +22,7 @@ import { UsersModule } from './modules/users/users.module';
 import { QueueModule } from './modules/queue/queue.module';
 import { MailModule } from './modules/mail/mail.module';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { ProfileModule } from './modules/profile/profile.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
     UsersModule,
     AuthModule,
     MailModule,
+    ProfileModule
   ],
   providers: [
     {
@@ -69,4 +71,4 @@ import { ThrottlerModule } from '@nestjs/throttler';
     { provide: APP_INTERCEPTOR, useClass: TransformInterceptor },
   ],
 })
-export class AppModule {}
+export class AppModule { }
